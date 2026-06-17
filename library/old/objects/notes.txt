@@ -1,0 +1,31 @@
+An object should be declared with a function that takes a set of arguments,
+the function should return a nix module.
+
+An object can be "declared" and "defined":
+	- Declared = template, e.g. programs.
+		- Declarations can be done as template-templates where you can't actually define things from that template but just declare new templates using it as a template.
+	- Defined = specific, e.g. specific program: steam, spotify, ...
+
+What can objects be used for:
+	- Programs:
+		- Maybe differentiate between gui anc cli somehow
+		 	- Could be handled totally separate
+	- Maybe move profiles to use it?
+		- Could probably move to using declaration
+	- Variants/Themes
+
+Objects should be compoundable:
+	- Create an object template that has a "default value"
+		- Base for e.g. program
+
+What should an "object" contain/do:
+
+	- an enable switch
+	- show all available definitions
+	- a set of "values"
+		- maybe none by default
+		- e.g. for programs: command, desktop entry, ...
+	- a "base" configuration
+		- takes arguments:
+			- enabled/disabled
+			- 

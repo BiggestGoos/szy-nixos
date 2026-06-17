@@ -1,0 +1,6 @@
+{ system, ... }:
+{
+
+	nixpkgs.hostPlatform = system;
+
+}
