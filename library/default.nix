@@ -6,15 +6,18 @@ let
 	directory = ./parts;
 
 	createLibrary = { ... }@arguments:
-	rec {
+	internal.attrsets.deepMerge
+	(
+		rec {
 
-		inherit arguments;
+			inherit arguments;
 
-		setArguments = new: createLibrary new;
-		addArguments = new: createLibrary (arguments // new); # TODO: Add deep merge with priority and order
-		__functor = self: addArguments;
+			setArguments = new: createLibrary new;
+			addArguments = new: createLibrary (internal.attrsets.deepMerge arguments new);
+			__functor = self: addArguments;
 
-	} // 
+		}
+	)
 	(
 		internal.importSzy
 		{

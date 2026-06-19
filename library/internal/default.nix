@@ -4,7 +4,7 @@ let
 	inherit (inputs.nixpkgs) lib;
 
 	importParts = (import ./importParts.nix { inherit inputs internal; });
-	attrsets = (import ./attrsets.nix { inherit inputs; });
+	attrsets = (import ./attrsets.nix { inherit lib; });
 
 	internal = attrsets.attrsets.deepMergeList
 	[
@@ -38,15 +38,11 @@ let
 				requiredArguments = part.requiredArguments or [];
 				hasRequiredArguments = isSublist argumentNames requiredArguments;
 			in
-			{
-				result = hasRequiredArguments;
-				warning = 
-				let
-					missingArguments = lib.lists.subtractLists argumentNames requiredArguments;
-				in
-					"The required arguments ${builtins.toJSON missingArguments} for '${wholeName}' part '${part.name}' are not set!";
-			};
-
+				hasRequiredArguments;
+			reservedNames =
+			[
+				"requiredArguments"
+			];
 		};
 
 	};
