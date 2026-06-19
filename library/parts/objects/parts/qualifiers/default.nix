@@ -1,3 +1,4 @@
+{ arguments, ... }:
 {
 
 	/*
@@ -17,6 +18,9 @@
 			}
 		}
 	*/
+
+	# You can add additional qualifiers via the objects.qualifiers argument for szy!
+	content = (arguments.objects or {}).qualifiers or {};
 
 	imports =
 	[

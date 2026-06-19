@@ -257,26 +257,18 @@ let
 	}@input:
 	let
 
-		# You can add additional qualifiers via the objects.qualifiers argument for szy!
-		allQualifiers = 
-		szy.lib.attrsets.deepMerge 
-		szy.objects.qualifiers
-		(
-			(arguments.objects or {}).qualifiers or {}
-		);
-
 		order' = 
 		if (qualifiers ? _meta) && (builtins.isAttrs qualifiers._meta) && (qualifiers._meta ? order)
 		then qualifiers._meta.order
 		else builtins.attrNames qualifiers;
 
-		order = (lib.trivial.checkListOfEnum "Qualifiers" (builtins.attrNames allQualifiers) order') order';
+		order = (lib.trivial.checkListOfEnum "Qualifiers" (builtins.attrNames szy.objects.qualifiers) order') order';
 
 		orderedQualifiers = 
 		builtins.map
 		(
 			name: 
-				allQualifiers."${name}" qualifiers."${name}"
+				szy.objects.qualifiers."${name}" qualifiers."${name}"
 		) order;
 
 		qualifierExtends = 

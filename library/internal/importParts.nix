@@ -20,6 +20,7 @@ let
 			"name"
 			"content"
 			"imports"
+			"directory"
 		];
 
 		reservedNames = defaultReservedNames ++ (input.reservedNames or []);
@@ -30,42 +31,46 @@ let
 		in
 			!(lib.lists.mutuallyExclusive attrNames reservedNames);
 
-		# Either directory or imports must be set, if both the imports takes precedence.
+		# Either directory or imports must be set
 		parts =
 		lib.trivial.throwIf ((directory == null) && (imports == null)) "Either directory or imports must be set!"
 		(
-			if (imports != null)
-			then # Parts can be imported via a list of either paths to .nix files or a set, both containing a part
+			internal.attrsets.deepMerge
 			(
-				builtins.listToAttrs
+				if (imports != null)
+				then # Parts can be imported via a list of either paths to .nix files or a set, both containing a part
 				(
-					builtins.map
+					builtins.listToAttrs
 					(
-						value:
-						{
-							name = 
-							if (builtins.isAttrs value)
-							then value.name
-							else lib.strings.removeSuffix ".nix" (lib.lists.last (builtins.split "/" (builtins.toString value)));
-							inherit value;
-						}
-					) imports
+						builtins.map
+						(
+							value:
+							{
+								name = 
+								if (builtins.isAttrs value)
+								then value.name
+								else lib.strings.removeSuffix ".nix" (lib.lists.last (builtins.split "/" (builtins.toString value)));
+								inherit value;
+							}
+						) imports
+					)
 				)
+				else {}
 			)
-			else # Parts can be imported via a path to a directory containing .nix files of parts
 			(
-				lib.attrsets.mapAttrs
+				if (directory != null) # Parts can be imported via a path to a directory containing .nix files of parts
+				then
 				(
-					name: value:
-						directory + "/${name}"
-				)
-				(
-					lib.attrsets.filterAttrs
+					lib.attrsets.mapAttrs'
 					(
-						name: value: 
-							value == "directory"
+						name: value:
+						{
+							name = lib.strings.removeSuffix ".nix" name;
+							value = directory + "/${name}";
+						}
 					) (builtins.readDir directory)
 				)
+				else {}
 			)
 		);
 
@@ -106,24 +111,24 @@ let
 						then {}
 						else part
 					);
+
 					# Parts can import more parts with a list of sets or paths to parts
-					imports = part.imports or [];
+					imports = part.imports or null;
+					directory = part.directory or null;
 
 					finalContent = 
-					if (imports == [])
+					if ((imports == null) && (directory == null))
 					then content
 					else
 					(
-						internal.attrsets.deepMergeList
-						[
-							content
-							(
-								importParts'
-								{
-									inherit whole arguments imports wholeName filter;
-								}
-							)
-						]
+						internal.attrsets.deepMerge
+						content
+						(
+							importParts'
+							{
+								inherit whole arguments imports directory wholeName filter;
+							}
+						)
 					);
 
 				in
