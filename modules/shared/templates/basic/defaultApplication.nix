@@ -1,8 +1,6 @@
-{ szy, lib, config, pkgs, systemConfig, ... }:
-szy.objects.declare
+{ szy, lib, config, pkgs, ... }:
+(szy config).objects.declare
 {
-
-	inherit config;
 	
 	name = "defaultApplication";
 
@@ -30,11 +28,11 @@ szy.objects.declare
 
 	configuration =
 	{ enabled, final }:
-	if (systemConfig)
+	if (szy.data.configType == "system")
 	then
-	{
-	}
-	else
+	{}
+	else if (szy.data.configType == "user")
+	then
 	{
 
 		xdg.mimeApps =
@@ -71,6 +69,8 @@ szy.objects.declare
 
 		};
 
-	};
+	}
+	else
+	{};
 
 }

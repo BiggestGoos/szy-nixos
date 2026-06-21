@@ -1,8 +1,6 @@
 { szy, lib, config, pkgs, ... }:
-szy.objects.declare
+(szy config).objects.declare
 {
-
-	inherit config;
 	
 	name = "program";
 

@@ -1,12 +1,14 @@
-{ lib, szy, ... }:
+{ lib, szy, arguments, ... }:
 let
+
+	outside.config = arguments.config or ((lib.trivial.warn "Either add config as argument to szy or supply your own config when calling utils functions!") null);
 
 	inherit (szy.lib.attrsets) getFromKeys;
 
 	global =
 	rec {
 
-		namespace = [ szy.misc.identifier "objects" ];
+		namespace = [ szy.data.identifier "objects" ];
 
 		template.namespace = identifier: global.namespace ++ [ identifier ];
 
@@ -25,7 +27,7 @@ let
 
 		template.getMeta =
 		{
-			config,
+			config ? outside.config,
 			name ? lib.trivial.throwIf (identifier == null) "No name was supplied." identifier,
 			identifier ? null,
 		}:
@@ -33,7 +35,7 @@ let
 		
 		definition.getMeta =
 		{
-			config,
+			config ? outside.config,
 			name ? identifier.name,
 			template ? identifier.template,
 			identifier ? {},
@@ -51,7 +53,7 @@ let
 
 		template.get =
 		{
-			config,
+			config ? outside.config,
 			name ? lib.trivial.throwIf (meta == {} && identifier == null) "No name was supplied." identifier,
 			identifier ? null,
 			meta ? {},
@@ -60,11 +62,11 @@ let
 			# If we already have metadata we skip getting it again.
 			meta = inputs.meta or (template.getMeta { inherit config name; });
 		in
-			if (!meta ? namespace) then {} else (getFromKeys { keys = meta.namespace; object = config; });
+			if (!(meta ? namespace)) then {} else (getFromKeys { keys = meta.namespace; object = config; });
 
 		definition.get =
 		{
-			config,
+			config ? outside.config,
 			name ? identifier.name,
 			template ? identifier.template,
 			identifier ? {},
@@ -74,7 +76,7 @@ let
 			# If we already have metadata we skip getting it again.
 			meta = inputs.meta or (definition.getMeta { inherit config name template; });
 		in
-			if (!meta ? namespace) then {} else (getFromKeys { keys = meta.namespace; object = config; });
+			if (!(meta ? namespace)) then {} else (getFromKeys { keys = meta.namespace; object = config; });
 
 		/*
 			Misc:
@@ -82,13 +84,13 @@ let
 
 		template.getAll =
 		{
-			config,
+			config ? outside.config,
 		}:
 			getFromKeys { keys = global.namespace; object = config; };
 
 		template.getFullExtends =
 		{
-			config,
+			config ? outside.config,
 			name ? lib.trivial.throwIf (identifier == null) "No name was supplied." identifier,
 			identifier ? null,
 		}@inputs:
@@ -111,7 +113,7 @@ let
 						(
 							name:
 							let
-								template = global.template.getMeta { inherit (inputs) config; inherit name; };
+								template = global.template.getMeta { inherit config name; };
 							in
 							(
 								if (template.extends != []) 

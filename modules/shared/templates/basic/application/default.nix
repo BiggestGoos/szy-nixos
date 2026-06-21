@@ -1,8 +1,6 @@
 { szy, lib, config, pkgs, ... }:
-szy.objects.declare
+(szy config).objects.declare
 {
-
-	inherit config;
 	
 	name = "application";
 
@@ -96,7 +94,7 @@ szy.objects.declare
 			builtins.map
 			(
 				identifier:
-					szy.objects.helper.definition.get { inherit config identifier; }
+					szy.objects.utils.definition.get { inherit config identifier; }
 			)
 			final.meta.full.definitions;
 		in

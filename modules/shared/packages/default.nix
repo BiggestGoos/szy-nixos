@@ -1,4 +1,4 @@
-{ szy, lib, config, systemConfig, ... }:
+{ szy, lib, config, ... }:
 let
 
 	inherit (config."${szy}") packages;
@@ -13,18 +13,21 @@ in
 	};
 
 	config =
-	if (systemConfig)
+	if (szy.data.configType == "system")
 	then
 	{
 
 		environment.systemPackages = packages;
 
 	}
-	else
+	else if (szy.data.configType == "user")
+	then
 	{
 
 		home.packages = packages;
 
-	};
+	}
+	else
+	{};
 
 }

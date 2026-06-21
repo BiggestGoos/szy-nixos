@@ -1,6 +1,7 @@
 { lib, szy, arguments, ... }:
 let
-	
+
+	inherit (arguments) config;
 	inherit (szy) objects;
 	inherit (objects) utils;
 
@@ -8,9 +9,7 @@ let
 		Resolve a definition, this can then be modified with qualifiers.
 	*/
 	resolveDefinition = 	
-	{
-		config, # The config object of the caller
-
+	{	
 		# The template to define
 		template,
 		# The name of the definition, must be unique for a definition of a given template
@@ -229,7 +228,7 @@ let
 			imports = resolved.imports or [];
 			result = builtins.removeAttrs resolved [ "imports" ];
 		in
-		(szy.lib.imports.toggled enabled imports) ++
+		(szy.lib.imports.toggled.listWithArgs enabled arguments imports) ++
 		[
 			(lib.mkIf (enabled) (result))
 		];
@@ -243,7 +242,6 @@ let
 	*/
 	define =
 	{ 
-		config,
 		template,
 		name,
 		/*
@@ -309,4 +307,10 @@ let
 		result;
 
 in
-	define
+{
+
+	requiredArguments = [ [ "config" ] ];
+
+	content = define;
+
+}

@@ -19,11 +19,18 @@
 		{
 			specialArgs = 
 			{
-				szy = inputs.szy.library { hostname = "test"; };
+				szy = inputs.szy.library { host.name = "test"; };
 			};
 			modules = 
+			let
+				home-manager.test.import = 
+				{
+					x = [ "home manager" ];
+				};
+			in
 			[ 
 	  			./configuration.nix 
+				home-manager.test.import
 				{
 					nixpkgs.hostPlatform = "x86_64-linux";
 				}

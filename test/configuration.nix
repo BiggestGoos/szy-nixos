@@ -9,6 +9,12 @@
 			type = lib.types.listOf lib.types.str;
 		};
 
+		"${szy}".x = lib.options.mkOption
+		{
+			type = lib.types.int;
+			default = 5;
+		};
+
 	};
 
 	imports = szy.lib.imports.toggled.recursive

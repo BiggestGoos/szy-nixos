@@ -1,8 +1,9 @@
 { szy, lib, config, ... }:
-szy.objects.declare
+let
+	szy' = szy config;
+in
+szy'.objects.declare
 {
-
-	inherit config;
 	
 	name = "default";
 
@@ -24,15 +25,15 @@ szy.objects.declare
 			definitionsBase = final.meta.definitions;
 			allDefinitionsBase = final.meta.full.definitions;
 
-			gDefinitions = builtins.filter (identifier: (szy.objects.helper.definition.get ({ inherit config identifier; })).data.enabled) definitionsBase;
-			gAllDefinitions = builtins.filter (identifier: (szy.objects.helper.definition.get ({ inherit config identifier; })).data.enabled) allDefinitionsBase;
+			gDefinitions = builtins.filter (identifier: (szy'.objects.utils.definition.get ({ inherit identifier; })).data.enabled) definitionsBase;
+			gAllDefinitions = builtins.filter (identifier: (szy'.objects.utils.definition.get ({ inherit identifier; })).data.enabled) allDefinitionsBase;
 
 			base = 
 			{ typeName, filterFunc }:
 			let
 
-				definitions = builtins.filter filterFunc (builtins.map (identifier: szy.objects.helper.definition.get { inherit config identifier; }) gDefinitions);
-				allDefinitions = builtins.filter filterFunc (builtins.map (identifier: szy.objects.helper.definition.get { inherit config identifier; }) gAllDefinitions);
+				definitions = builtins.filter filterFunc (builtins.map (identifier: szy'.objects.utils.definition.get { inherit identifier; }) gDefinitions);
+				allDefinitions = builtins.filter filterFunc (builtins.map (identifier: szy'.objects.utils.definition.get { inherit identifier; }) gAllDefinitions);
 
 				defaultDefinition = if (allDefinitions == []) then null else (builtins.head allDefinitions);
 				defaultIdentifier = if (defaultDefinition == null) then null else defaultDefinition.meta.identifier;
@@ -97,7 +98,7 @@ szy.objects.declare
 					default = 
 					if (identifier == null) 
 					then {} 
-					else szy.objects.helper.definition.get { inherit config identifier; };
+					else szy'.objects.utils.definition.get { inherit identifier; };
 				};
 
 			};

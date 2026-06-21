@@ -1,6 +1,6 @@
 { szy, ... }:
 self:
 let
-	inherit (szy.misc) identifier;
+	inherit (szy.data) identifier;
 in
 	identifier

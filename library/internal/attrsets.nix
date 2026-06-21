@@ -1,34 +1,72 @@
 { lib, ... }:
+let
+
+	absoluteDefaultPriority = 100;
+
+	isOverride = value: ((value._type or "") == "override");
+
+	getPriority = value:
+	if (isOverride value)
+	then value.priority or absoluteDefaultPriority
+	else absoluteDefaultPriority;
+
+	getContent = value:
+	if (isOverride value)
+	then value.content
+	else value;
+
+	stripOverrideRecursive = value:
+	let
+
+		content = getContent value;
+
+		strippedSet = 
+		lib.attrsets.mapAttrs
+		(
+			name: value:
+				stripOverrideRecursive value
+		) content;
+
+	in
+	if (!(builtins.isAttrs content))
+	then content
+	else strippedSet;
+
+	/*
+		I had to create my own function for filtering overrides as the nixpkgs.lib one strips the override property when filtering.
+		This means that when merging a list of attributes, the override property will be lost along the way. A way to resolve this is
+		to simply not strip the override property until after everything is merged.
+	*/
+	filterOverrides = l: r:
+	let
+
+		lprio = getPriority l.value;
+		rprio = getPriority r.value;
+
+		getResult = value: thisPrio: otherPrio:
+		if (thisPrio <= otherPrio) # Lower prio => higher prio (for some reason)
+		then 
+		[ value ]
+		else [];
+
+		result =
+		(
+			getResult l lprio rprio
+		) ++
+		(
+			getResult r rprio lprio
+		);
+
+	in
+		result;
+
+in
 {
 
 	attrsets =
-	rec {	
+	let
 
-		inherit (lib)
-			mkOverride
-			mkDefault
-			mkForce
-		;
-
-		/*
-			Set priority to the actual default value of priorities
-		*/
-		mkAbsoluteDefault =
-		let
-			absoluteDefaultPriority = 100;
-		in
-			mkOverride absoluteDefaultPriority;
-
-		/*
-			If you want a value to have a priority, use this to breakout that priority, otherwise it will be removed with a deepMerge.
-		*/
-		mkBreakoutPriority = mkAbsoluteDefault;
-
-		/*
-			deepMerge takes two sets and returns one set which is the result of merging the given sets. Right set takes precedence.
-			Sets and lists are merged, lists are merged r.list ++ l.list. Overrides are taken into account, not orders though.
-		*/
-		deepMerge = lset: rset:
+		deepMerge' = lset: rset:
 		let
 			attrNames =
 			let
@@ -51,7 +89,7 @@
 						lvalPre = { name = "l"; value = lset."${name}"; };
 						rvalPre = { name = "r"; value = rset."${name}"; };
 
-						valuesList = lib.filterOverrides [ lvalPre rvalPre ];
+						valuesList = filterOverrides lvalPre rvalPre;
 
 						values = 
 						builtins.listToAttrs
@@ -69,7 +107,22 @@
 						lval = values.l;
 						rval = values.r;
 
-						bothAre = func: (func lval) && (func rval);
+						# Since it might be the case that one value is an override set while the other is a regular value we need to unwrap, do operation, and wrap again for it to work.
+
+						bothAre = func: (func (getContent lval)) && (func (getContent rval));
+						appendLists = l1: l2:
+						let
+							l1val = getContent l1;
+							l2val = getContent l2;
+						in
+							lib.mkOverride (getPriority l1) (l1val ++ l2val);
+
+						mergeSets = s1: s2:
+						let
+							s1val = getContent s1;
+							s2val = getContent s2;
+						in
+							lib.mkOverride (getPriority s1) (deepMerge' s1val s2val);
 					in
 					{
 						inherit name;
@@ -79,11 +132,11 @@
 						else
 						(
 							if (bothAre builtins.isList)
-							then rval ++ lval
-							else if (bothAre builtins.isAttrs)
-							then deepMerge lval rval
-							else rval
-						);
+							then appendLists rval lval
+							else if (bothAre builtins.isAttrs)	
+							then mergeSets lval rval				
+							else rval						
+						);											
 					}
 				) conflicts
 			);
@@ -91,10 +144,35 @@
 		in
 			baseMerge // values;
 
+	in
+	rec {
+
+		inherit (lib)
+			mkOverride
+			mkDefault
+			mkForce
+		;
+
+		/*
+			Set priority to the actual default value of priorities
+		*/
+		mkAbsoluteDefault = mkOverride absoluteDefaultPriority;
+
+		/*
+			If you want a value to have a priority, use this to breakout that priority, otherwise it will be removed with a deepMerge.
+		*/
+		mkBreakoutPriority = mkAbsoluteDefault;
+
+		/*
+			deepMerge takes two sets and returns one set which is the result of merging the given sets. Right set takes precedence.
+			Sets and lists are merged, lists are merged r.list ++ l.list. Overrides are taken into account, not orders though.
+		*/
+		deepMerge = lset: rset: stripOverrideRecursive (deepMerge' lset rset);
+
 		/*
 			deepMergeList deeply merges a list of sets. The further back in the list the higher the priority.
 		*/
-		deepMergeList = list: lib.lists.foldl deepMerge {} list;
+		deepMergeList = list: stripOverrideRecursive (lib.lists.foldl deepMerge' {} list);
 
 	};
 

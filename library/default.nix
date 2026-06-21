@@ -14,7 +14,8 @@ let
 
 			setArguments = new: createLibrary new;
 			addArguments = new: createLibrary (internal.attrsets.deepMerge arguments new);
-			__functor = self: addArguments;
+
+			__functor = self: config: addArguments { config = internal.attrsets.mkForce config; }; # A quick short-hand for adding/overriding config as argument to szy
 
 		}
 	)

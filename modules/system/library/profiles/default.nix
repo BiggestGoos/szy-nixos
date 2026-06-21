@@ -1,4 +1,9 @@
 { lib, config, pkgs, szy, ... }:
+let
+
+	flattenTree = import ./flattenTree.nix;
+
+in
 {
 
 	options."${szy}".profiles = {
@@ -35,7 +40,7 @@
 			type = lib.types.listOf (lib.types.listOf lib.types.attrs);
 			readOnly = true;
 
-			default = (szy.profiles.flattenTree config."${szy}".profiles.base);
+			default = (flattenTree config."${szy}".profiles.base);
 
 		};
 

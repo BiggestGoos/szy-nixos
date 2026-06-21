@@ -28,20 +28,31 @@ let
 			inherit arguments directory wholeName;
 			filter = part:
 			let
-				isSublist = main: sub:
-				let
-					intersection = lib.lists.intersectLists main sub;
-				in
-					(builtins.length intersection) == (builtins.length sub);
-
-				argumentNames = builtins.attrNames arguments;
 				requiredArguments = part.requiredArguments or [];
-				hasRequiredArguments = isSublist argumentNames requiredArguments;
+				supportedConfigType = part.supportedConfigType or null;
+
+				configType = arguments.configType or null;
+				isSupportedConfigType = 
+				if (configType == null || supportedConfigType == null)
+				then true
+				else supportedConfigType == configType;
+
+				hasRequiredArguments = 
+				lib.lists.all
+				(
+					argument':
+					let
+						argument = lib.lists.toList argument';
+					in
+						lib.attrsets.hasAttrByPath argument arguments
+				) requiredArguments;
 			in
-				hasRequiredArguments;
+				isSupportedConfigType && hasRequiredArguments;
+
 			reservedNames =
 			[
 				"requiredArguments"
+				"supportedConfigType"
 			];
 		};
 

@@ -1,4 +1,4 @@
-{ szy, lib, config, systemConfig, ... }:
+{ szy, lib, config, ... }:
 let
 
 	inherit (config."${szy}") variables;
@@ -49,19 +49,22 @@ in
 	};
 
 	config =
-	if (systemConfig)
+	if (szy.data.configType == "system")
 	then
 	{
 
 		environment.sessionVariables = setDefault variables;
 
 	}
-	else
+	else if (szy.data.configType == "user")
+	then
 	{
 
 		home.sessionVariables = setDefault variables;
 		systemd.user.sessionVariables = setDefault variables;
 
-	};
+	}
+	else
+	{};
 
 }

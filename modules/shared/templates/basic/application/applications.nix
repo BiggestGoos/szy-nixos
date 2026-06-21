@@ -1,5 +1,8 @@
-enabled:
+{ ... }:
 { szy, lib, config, ... }:
+let
+	szy' = szy config;
+in
 {
 
 	options."${szy}".applications = 
@@ -17,11 +20,11 @@ enabled:
 
 		getDefinitions = template: 
 		let
-			meta = szy.objects.helper.template.getMeta { inherit config; identifier = template; };
+			meta = szy'.objects.utils.template.getMeta { identifier = template; };
 			all = builtins.map 
 			(
 				identifier: 
-				szy.objects.helper.definition.get 
+				szy.objects.utils.definition.get 
 				{ 
 					inherit config identifier; 
 				}
@@ -42,9 +45,9 @@ enabled:
 		builtins.map 
 		(
 			identifier: 
-			szy.objects.helper.template.get 
+			szy'.objects.utils.template.get 
 			{ 
-				inherit config identifier;
+				inherit identifier;
 			}
 		) 
 		identifiers;
@@ -76,7 +79,7 @@ enabled:
 							lib.attrsets.mapAttrs
 							(
 								name: value:
-									if (value.value == null) then null else inheritApplication value.value
+									if (value.value == {}) then null else inheritApplication value.value
 							)
 							defaults;
 						}

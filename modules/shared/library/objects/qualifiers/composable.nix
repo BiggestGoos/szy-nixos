@@ -1,9 +1,7 @@
-{ szy, lib, ... }:
-szy.objects.declare
+{ szy, lib, config, ... }:
+(szy config).objects.declare
 {
 
-	inherit config;
-	
 	name = "composable";
 
 	parameters =

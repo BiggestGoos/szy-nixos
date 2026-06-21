@@ -1,6 +1,8 @@
 { arguments, ... }:
 {
 
+	requiredArguments = [ [ "config" ] ];
+
 	/*
 		Qualifiers should follow this template:
 

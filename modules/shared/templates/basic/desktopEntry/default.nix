@@ -1,18 +1,19 @@
-{ szy, lib, config, pkgs, system, systemConfig, ... }:
-szy.objects.declare
+{ szy, lib, config, pkgs, ... }:
+let
+	szy' = szy config;
+in
+szy'.objects.declare
 {
-
-	inherit config;
 	
 	name = "desktopEntry";
 
-	parameters = import ./parameters.nix { inherit szy lib pkgs; };
+	parameters = import ./parameters.nix { inherit lib pkgs; szy = szy'; };
 
 	configuration =
 	{ enabled, final }:
 	let
 
-		definitions = builtins.map (identifier: szy.objects.helper.definition.get ({ inherit config identifier; })) final.meta.full.definitions;
+		definitions = builtins.map (identifier: szy.objects.utils.definition.get ({ inherit config identifier; })) final.meta.full.definitions;
 		enabledDefinitions = builtins.filter
 		(
 			definition:
@@ -63,10 +64,10 @@ mkdir -p $out/share/applications
 
 		argsStr = lib.strings.concatStrings ([ argsStrBase ] ++ argsList);
 
-		package = builtins.derivation
+		package = builtins.derivation # TODO: Maybe look into (if exists) overriding final.data.package such that finalPackage can be used to override the real package.
 		{
 			name = "desktopEntryOverrides";
-			inherit system;
+			inherit (szy.data.host) system;
 			builder = "${pkgs.bash}/bin/bash";
 
 			coreutils = pkgs.coreutils;

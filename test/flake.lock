@@ -43,8 +43,8 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1781906835,
-        "narHash": "sha256-3wOstQ6QfbjtduVPBoONPPXQ+uO1rPlYAzYE6Qaxbjk=",
+        "lastModified": 1781965803,
+        "narHash": "sha256-36MUjY16JyIkyZQaHvFYC2NvHJjm8376V+IPzjHq9rg=",
         "path": "/home/goos/Dev/szy-nixos",
         "type": "path"
       },

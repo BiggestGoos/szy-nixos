@@ -1,16 +1,16 @@
 { szy, lib, config, pkgs, ... }:
-szy.objects.declare
+(szy config).objects.declare
 {
-
-	inherit config;
 	
-	name = "shell";
+	name = "shellBase";
 
-	extends = [ "defaultApplication" "terminalApplication" ];
+	extends = [ "defaultApplication" ];
 
 	defaultArguments =
 	{ final, template }:
 	{
+
+		application.type = lib.mkForce "cli";
 
 		program.arguments =
 		{

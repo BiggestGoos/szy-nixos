@@ -6,7 +6,7 @@
 
 		constant = 
 		{ type, value, extra ? {} }: 
-		szy.lib.attrsets.deepMerge
+		szy.lib.attrsets.deepMergeList
 		[ 
 			(
 				lib.options.mkOption 

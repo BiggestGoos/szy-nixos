@@ -1,12 +1,11 @@
-{ szy, lib, ... }:
+{ szy, lib, arguments, ... }:
 let
 
+	inherit (arguments) config;
 	inherit (szy.objects) utils;
 
 	declare =
-	{
-		config, # The config object of the caller
-
+	{	
 		# The name of the template, must be unique
 		name,
 		# A list of templates, by identifier, to extend
@@ -47,7 +46,7 @@ let
 
 			namespace = utils.template.namespace global.identifier;
 
-			final = utils.template.get { inherit config; inherit (global) identifier; };
+			final = utils.template.get { inherit (global) identifier; };
 
 			resolveSet = (lib.trivial.flip szy.lib.functions.resolveValue) { inherit (global) final; };
 		};
@@ -123,7 +122,7 @@ let
 						extends = constant 
 						{
 							type = lib.types.listOf lib.types.str;
-							value = utils.template.getFullExtends { inherit (input) config name; };
+							value = utils.template.getFullExtends { inherit name; };
 						};
 						# A list of all definitions that definie this template, directly and indirectly, by identifier
 						definitions = constant 
@@ -132,7 +131,7 @@ let
 							value = 
 							let
 					
-								allTemplates = utils.template.getAll { inherit (input) config; };
+								allTemplates = utils.template.getAll {};
 								allDefinitions = 
 								lib.lists.flatten
 								(
@@ -187,7 +186,7 @@ let
 						(
 							builtins.map
 							(
-								identifier: utils.template.get { inherit (input) config; inherit identifier; }
+								identifier: utils.template.get { inherit identifier; }
 							) global.final.meta.full.extends
 						);
 
@@ -206,7 +205,7 @@ let
 								allExtendsEnabled = 
 								lib.lists.all 
 								(
-									identifier: (utils.template.get { inherit (input) config; inherit identifier; }).data.enabled
+									identifier: (utils.template.get { inherit identifier; }).data.enabled
 								) global.final.meta.full.extends;
 								combined = hasDefinitions && allExtendsEnabled;
 							in
@@ -274,7 +273,7 @@ let
 			(
 				builtins.map 
 				(
-					identifier: utils.definition.get { inherit (input) config; inherit identifier; }
+					identifier: utils.definition.get { inherit identifier; }
 				) global.final.meta.full.definitions
 			);
 			enabled = global.final.data.enabled && anyDefinitionEnabled;
@@ -290,7 +289,7 @@ let
 			imports = resolved.imports or [];
 			result = builtins.removeAttrs resolved [ "imports" ];
 		in
-		(szy.lib.imports.toggled enabled imports) ++
+		(szy.lib.imports.toggled.listWithArgs enabled arguments imports) ++
 		[
 			(lib.mkIf (enabled) (result))
 		];
@@ -298,4 +297,10 @@ let
 	};
 
 in
-	declare
+{
+
+	requiredArguments = [ [ "config" ] ];
+
+	content = declare;
+
+}

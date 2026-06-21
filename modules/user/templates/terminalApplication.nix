@@ -1,8 +1,9 @@
 { szy, lib, config, pkgs, ... }:
-szy.objects.declare
+let
+	szy' = szy config;
+in
+szy'.objects.declare
 {
-
-	inherit config;
 	
 	name = "terminalApplication";
 
@@ -15,7 +16,7 @@ szy.objects.declare
 
 			terminal =
 			let
-				terminals = (szy.objects.helper.getTemplate { inherit config; name = "terminal"; }).meta.full.definitions;
+				terminals = (szy'.objects.utils.getTemplate { name = "terminal"; }).meta.full.definitions;
 
 				names = builtins.map (identifier: identifier.name) terminals;
 				templates = builtins.map (identifier: identifier.template) terminals;
@@ -82,7 +83,7 @@ szy.objects.declare
 		inherit (data) application desktopEntry;
 		inherit (application) terminal type;
 
-		runCommand = (szy.objects.helper.definition.get ({ inherit config; identifier = terminal; })).data.commands.runCommand.relative;
+		runCommand = (szy'.objects.utils.definition.get ({ identifier = terminal; })).data.commands.runCommand.relative;
 	in
 	{
 
@@ -139,7 +140,7 @@ szy.objects.declare
 			builtins.map
 			(
 				identifier:
-					szy.objects.helper.definition.get { inherit config identifier; }
+					szy'.objects.utils.definition.get { inherit identifier; }
 			)
 			final.meta.full.definitions;
 		in

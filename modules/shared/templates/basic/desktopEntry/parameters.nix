@@ -32,7 +32,7 @@ let
 			values = 
 			let
 				fullSet =
-				base: default: override: szy.utils.mergeAll [ base default override ];
+				base: default: override: szy.lib.attrsets.deepMergeList [ base default override ];
 
 				fullActions = fullSet (base.values.actions or {}) (defaultOverrides.actions or {}) (overrides.actions or {});
 				fullExtra = fullSet (base.values.extraConfig or {}) (defaultOverrides.extraConfig or {}) (overrides.extraConfig or {});
