@@ -7,8 +7,7 @@ szy'.objects.declare
 	
 	name = "default";
 
-	templateParameters = 
-	{ final }:
+	metaParameters.template =
 	{
 
 		defaultTypes = lib.options.mkOption
@@ -17,10 +16,16 @@ szy'.objects.declare
 			default = {}; # { <name> = filter; }
 		};
 
+	};
+
+	templateParameters = 
+	{ final }:
+	{
+
 		default	=
 		let
 
-			types = final.data.defaultTypes;
+			types = final.meta.metaData.defaultTypes;
 
 			definitionsBase = final.meta.definitions;
 			allDefinitionsBase = final.meta.full.definitions;

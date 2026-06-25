@@ -37,6 +37,7 @@ let
 		# also recieves the additional argument 'enabled'.
 		configuration ? {},
 
+		metaArguments ? {}, # Fulfill additional meta parameters
 		...
 	}@input:
 	let
@@ -90,6 +91,36 @@ let
 
 					# The namespace (under "${szy}".objects) in which the definition lies
 					namespace = constant { type = lib.types.listOf lib.types.str; value = global.namespace; };
+
+					# Additional meta data
+					metaData =
+					let
+						allMetaParameters =
+						builtins.map
+						(
+							template: 
+							{
+								options = global.resolveSet template.meta.metaParameters.object;
+							}
+						) global.templates;
+
+						allDefaultArguments =
+						builtins.map
+						(
+							template:
+								global.resolveSet template.meta.defaultMetaArguments.object
+						) global.templates;
+
+						metaArguments = global.resolveSet (input.metaArguments or {});
+
+						metaArgument = szy.lib.attrsets.deepMergeList (allDefaultArguments ++ [ metaArguments ]);
+
+					in
+					constant
+					{
+						type = lib.types.submoduleWith { modules = allMetaParameters; };
+						value = metaArgument;
+					};
 
 					# A list of templates this definition extends, by identifier
 					extends = constant { type = lib.types.listOf lib.types.anything; value = extends; }; # TODO: Make this be a list of enum of all possible templates.
@@ -245,29 +276,50 @@ let
 		template,
 		name,
 		/*
-			A set of qualifiers to be applied to the definition,
+			A set or list of qualifiers to be applied to the definition,
 			attribute names map to qualifier functions and the values are given as arguments to those functions
 
 			The attribute _meta.order can be used to specify in which order the qualifiers will be applied, otherwise the order is undefined.
+			If list then the order is in the order of the list.
 		*/
-		qualifiers ? {}, # { <qualifier> = { <arguments> }; }
+		qualifiers ? {}, # { <qualifier> = { <arguments> }; }, alt [ { name = <qualifiers-name>; arguments = { <arguments> }; } ... ]
 		...
 	}@input:
 	let
+
+		final = szy.objects.utils.definition.get { identifier = { inherit name template; }; };
+		template = szy.objects.utils.template.get { identifier = template; };
+
+		# We call qualifiers with the optional parameter final
+		qualifiers = szy.lib.functions.resolveValue (input.qualifiers or {}) { inherit final template; };
 
 		order' = 
 		if (qualifiers ? _meta) && (builtins.isAttrs qualifiers._meta) && (qualifiers._meta ? order)
 		then qualifiers._meta.order
 		else builtins.attrNames qualifiers;
 
-		order = (lib.trivial.checkListOfEnum "Qualifiers" (builtins.attrNames szy.objects.qualifiers) order') order';
+		allQualifiers = szy.objects.qualifiers.definition or {};
+
+		order = (lib.trivial.checkListOfEnum "Qualifiers" (builtins.attrNames allQualifiers) order') order';
 
 		orderedQualifiers = 
-		builtins.map
+		if (builtins.isAttrs qualifiers)
+		then
 		(
-			name: 
-				szy.objects.qualifiers."${name}" qualifiers."${name}"
-		) order;
+			builtins.map
+			(
+				name: 
+					allQualifiers."${name}" qualifiers."${name}"
+			) order
+		)
+		else
+		(
+			builtins.map
+			(
+				{ name, arguments }:
+					allQualifiers."${name}" arguments
+			) qualifiers
+		);
 
 		qualifierExtends = 
 		builtins.concatLists

@@ -23,7 +23,7 @@
 				program = config.programs."${name}" or {};
 				service = config.services."${name}" or {};
 
-				package = program.finalPackage or (program.package or (service.finalPackage or (service.package or (pkgs."${name}" or ("No package with name { ${name} }")))));
+				package = pkgs."${name}" or ("No package with name { ${name} }");
 			in
 				package;
 		};

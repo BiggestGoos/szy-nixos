@@ -56,7 +56,6 @@ in
 				(mkHostValue "name" "Hostname" builtins.isString "string")
 				(mkHostValue "path" "Path" builtins.isPath "path")
 				(mkHostValue "system" "System" builtins.isString "string")
-				(mkHostValue "stateVersion" "NixOS state version" builtins.isString "string")
 			];
 		}
 		{

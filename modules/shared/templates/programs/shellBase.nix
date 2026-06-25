@@ -6,6 +6,11 @@
 
 	extends = [ "defaultApplication" ];
 
+	metaArguments =
+	{
+		generateTemplateOptions.generateOption = false;
+	};
+	
 	defaultArguments =
 	{ final, template }:
 	{

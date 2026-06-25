@@ -31,7 +31,7 @@
 				szy.lib.attrsets.deepMerge
 				arg'
 				{
-					import = szy.lib.attrsets.mkDefault
+					propagate = szy.lib.attrsets.mkDefault
 					rec {
 						single = szy.lib.imports.propagate.single arg';
 						list = szy.lib.imports.propagate.list arg';

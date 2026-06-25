@@ -4,7 +4,7 @@ let
 	inherit (arguments) config;
 	inherit (szy.objects) utils;
 
-	declare =
+	resolveDeclaration =
 	{	
 		# The name of the template, must be unique
 		name,
@@ -37,7 +37,11 @@ let
 		# Arbitrary configuration, is automatically enabled/disabled based on the template's enabled-value, 
 		# also recieves the additional argument 'enabled'.
 		configuration ? {},
-
+		
+		metaParameters ? {}, # Add additional meta parameters
+		metaArguments ? {}, # Fulfill the additional meta parameters
+		defaultMetaArguments ? {}, # Passed along to templates and objects
+		...
 	}@input:
 	let
 		global =
@@ -90,6 +94,55 @@ let
 					{
 						parameters = constant { type = lib.types.either (lib.types.attrs) (lib.types.functionTo lib.types.attrs); value = templateParameters; };
 						arguments = constant { type = lib.types.either (lib.types.attrs) (lib.types.functionTo lib.types.attrs); value = templateArguments; };
+					};
+
+					# Meta parameters:
+					metaParameters =
+					{
+						object = constant { type = lib.types.either (lib.types.attrs) (lib.types.functionTo lib.types.attrs); value = metaParameters.object or {}; };
+						template = constant { type = lib.types.either (lib.types.attrs) (lib.types.functionTo lib.types.attrs); value = metaParameters.template or {}; };
+					};
+
+					defaultMetaArguments =
+					{
+						object = constant { type = lib.types.either (lib.types.attrs) (lib.types.functionTo lib.types.attrs); value = defaultMetaArguments.object or {}; };
+						template = constant { type = lib.types.either (lib.types.attrs) (lib.types.functionTo lib.types.attrs); value = defaultMetaArguments.template or {}; };						
+					};
+				
+					# Additional meta data
+					metaData =
+					let
+						allExtends =
+						builtins.map
+						(
+							identifier:
+								utils.template.get { inherit identifier; }
+						) global.final.meta.full.extends;
+
+						allParameters =
+						builtins.map
+						(
+							template: 
+							{ 
+								options = global.resolveSet template.meta.metaParameters.template;
+							}
+						) ([ global.final ] ++ allExtends);
+
+						allDefaultArguments =
+						builtins.map
+						(
+							template:
+								global.resolveSet template.meta.defaultMetaArguments.template
+						) ([ global.final ] ++ allExtends);
+
+						metaArguments = global.resolveSet (input.metaArguments or {});
+
+						metaArgument = szy.lib.attrsets.deepMergeList (allDefaultArguments ++ [ metaArguments ]);
+					in
+					constant
+					{
+						type = lib.types.submoduleWith { modules = allParameters; };
+						value = metaArgument;
 					};
 
 					/*
@@ -295,6 +348,91 @@ let
 		];
 
 	};
+
+	declare =
+	{ 
+		name,
+		/*
+			A set or list of qualifiers to be applied to the declaration,
+			attribute names map to qualifier functions and the values are given as arguments to those functions
+
+			The attribute _meta.order can be used to specify in which order the qualifiers will be applied, otherwise the order is undefined.
+			If list then the order is in the order of the list.
+		*/
+		qualifiers ? {}, # { <qualifier> = { <arguments> }; }, alt [ { name = <qualifiers-name>; arguments = { <arguments> }; } ... ]
+		...
+	}@input:
+	let
+
+		final = szy.objects.utils.template.get { identifier = name; };
+
+		# We call qualifiers with the optional parameter final
+		qualifiers = szy.lib.functions.resolveValue (input.qualifiers or {}) { inherit final; };
+
+		order' = 
+		if (qualifiers ? _meta) && (builtins.isAttrs qualifiers._meta) && (qualifiers._meta ? order)
+		then qualifiers._meta.order
+		else builtins.attrNames qualifiers;
+
+		allQualifiers = szy.objects.qualifiers.template or {};
+
+		order = (lib.trivial.checkListOfEnum "Qualifiers" (builtins.attrNames allQualifiers) order') order';
+
+		orderedQualifiers = 
+		if (builtins.isAttrs qualifiers)
+		then
+		(
+			builtins.map
+			(
+				name: 
+					allQualifiers."${name}" qualifiers."${name}"
+			) order
+		)
+		else
+		(
+			builtins.map
+			(
+				{ name, arguments }:
+					allQualifiers."${name}" arguments
+			) qualifiers
+		);
+
+		qualifierExtends = 
+		builtins.concatLists
+		(
+			builtins.map
+			(
+				qualifier:
+					qualifier.extends or []
+			) orderedQualifiers
+		);
+
+		resolvedInput = 
+		szy.lib.attrsets.deepMerge
+		input
+		{
+			extends = qualifierExtends;
+		};
+
+		output = resolveDeclaration resolvedInput;
+
+		/*
+			Apply the qualifier functions to the resolved declaration output in the defined (or not) order
+		*/
+		resolve = 
+		lib.lists.foldl 
+		(
+			data: qualifier: 
+			qualifier 
+			{
+				inherit config data;
+				identifier = name;
+			}
+		) output;
+
+		result = resolve orderedQualifiers;
+	in
+		result;
 
 in
 {

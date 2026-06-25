@@ -6,12 +6,80 @@
 
 	extends = [ "application" "default" ];
 
-	templateArguments =
+	qualifiers =
+	[
+		{
+			name = "generateTemplateOptions";
+
+			arguments =
+			{
+				namespace = [ "catalog" "applications" "defaults" ];
+
+				#readOnly = true;
+
+				determineOption = template:
+				let
+					inherit (template.data) default;
+					names = builtins.attrNames template.meta.metaData.defaultTypes;
+				in
+				{
+
+					type = 
+					let
+
+						module = name:
+						{
+							options."${name}" = lib.options.mkOption
+							{
+								type = lib.types.submodule
+								{
+									freeformType = lib.types.anything;
+									options.value = szy.lib.options.constant
+									{
+										type = lib.types.nullOr lib.types.attrs;
+										value = default."${name}".value.data or null;
+									};
+								};	
+							};
+						};
+
+					in
+					lib.types.submoduleWith 
+					{ 
+						modules =
+						builtins.map
+						(
+							name: 
+								module name
+						) names;
+					};
+
+				};
+
+				determineData = template: data:
+				{
+					default =
+					lib.attrsets.mapAttrs
+					(
+						name: value:
+						if (value ? identifier)
+						then
+						{
+							inherit (value) identifier;
+						}
+						else {}
+					) data;
+				};
+
+			};
+		}
+	];
+
+	defaultMetaArguments.template =
 	{ final }:
 	{
 
 		defaultTypes = 
-		lib.mkDefault
 		{
 			any = definition:
 			let
@@ -35,7 +103,7 @@
 	then
 	{
 
-		xdg.mimeApps =
+		/*xdg.mimeApps = Fix to use new catalog stuff!
 		{
 
 			enable = true;
@@ -63,11 +131,11 @@
 			builtins.map
 			(
 				default:
-					default.package
+					default.finalPackage
 			)
 			defaults;
 
-		};
+		};*/
 
 	}
 	else

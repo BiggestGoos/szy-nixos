@@ -1,10 +1,77 @@
 { szy, lib, config, pkgs, ... }:
+let
+	generateObjectOptions.namespace = name: [ name ];
+in
 (szy config).objects.declare
 {
 	
 	name = "application";
 
 	extends = [ "program" "desktopEntry" ];
+
+	qualifiers =
+	{ final, ... }:
+	let
+
+		determineNamespace = restrictedNames:
+		object:
+		let
+			namespace =
+			if (object.meta.metaData.generateObjectOptions.namespace == final.meta.metaData.generateObjectOptions.namespace)
+			then [ object.meta.metaData.generateObjectOptions.name ]
+			else object.meta.metaData.generateObjectOptions.namespace ++ [ object.meta.metaData.generateObjectOptions.name ];
+
+			verifiedNamespace = 
+			let
+				first = builtins.head namespace;
+			in
+			(
+				lib.trivial.throwIf 
+				(builtins.elem first restrictedNames) 
+				"Namespaces for applications can't begin with the following: ${builtins.toJSON restrictedNames}"
+			) namespace;
+		in
+			verifiedNamespace;
+
+	in
+	[		
+		{
+			name = "generateObjectOptions";
+
+			arguments =
+			{
+				namespace = [ "catalog" "applications" ];
+
+				determineNamespace = 
+				determineNamespace
+				[
+					"defaults"
+					"enabled"
+				];
+
+			};
+		}
+		{
+			name = "generateObjectOptions";
+
+			arguments =
+			{
+				namespace = [ "catalog" "applications" "enabled" ];
+
+				readOnly = true;
+				filter = object: object.data.enabled;
+
+				determineNamespace = determineNamespace [];
+
+				determineOption = object:
+				{
+					type = lib.types.attrs;
+					readOnly = true;
+					default = object.data;
+				};
+			};
+		}
+	];
 
 	parameters =
 	{ final, template }:
@@ -83,10 +150,37 @@
 	{ enabled, final }:
 	{
 
-		imports =
+		/*imports =
 		[
-			./applications.nix
-		];
+			(
+				{ ... }:
+				{
+
+					options.szy.apps = lib.options.mkOption
+					{
+						type = lib.types.submodule
+						{
+							options.steam = 
+							{
+								enable = lib.options.mkEnableOption "steam";
+							};
+						};
+					};
+
+				}
+			)
+			(
+				{ ... }:
+				{
+
+					options.szy.apps.discord =
+					{
+						enable = lib.options.mkEnableOption "discord";
+					};
+
+				}
+			)
+		];*/
 
 		assertions =
 		let
@@ -98,26 +192,28 @@
 			)
 			final.meta.full.definitions;
 		in
-		lib.lists.flatten
 		(
-			builtins.map
+			lib.lists.flatten
 			(
-				definition:
-				let
-					inherit (definition.data.application) type;
-				in
-				[
-					{
-						assertion = (type == "gui") || definition.data.commands ? exec;
-						message = "The cli definition \"${definition.meta.name}\" of the template \"${definition.meta.template}\" must have an exec command value!";
-					}
-					{
-						assertion = (type == "cli") || definition.data.commands ? open;
-						message = "The gui definition \"${definition.meta.name}\" of the template \"${definition.meta.template}\" must have an open command value!";
-					}
-				]
+				builtins.map
+				(
+					definition:
+					let
+						inherit (definition.data.application) type;
+					in
+					[
+						{
+							assertion = (type == "gui") || definition.data.commands ? exec;
+							message = "The cli definition \"${definition.meta.name}\" of the template \"${definition.meta.template}\" must have an exec command value!";
+						}
+						{
+							assertion = (type == "cli") || definition.data.commands ? open;
+							message = "The gui definition \"${definition.meta.name}\" of the template \"${definition.meta.template}\" must have an open command value!";
+						}
+					]
+				)
+				definitions
 			)
-			definitions
 		);
 
 	};

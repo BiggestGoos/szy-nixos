@@ -51,6 +51,8 @@
 							[
 								{ # This will be the real values in users.users.<user>
 
+									home = szy.lib.attrsets.mkForce (lib.mkForce user.data.homeDirectory);
+
 									isNormalUser = szy.lib.attrsets.mkDefault true; # By default we set users to be normal, this can be overriden.
 									isSystemUser = szy.lib.attrsets.mkDefault false;
 

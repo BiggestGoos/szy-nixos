@@ -43,6 +43,16 @@ szy'.objects.declare
 			value = final.meta.name;
 		};
 
+		homeDirectory = lib.options.mkOption
+		{
+			type = lib.types.str;
+			default =
+			let
+				base = lib.strings.removeSuffix "/" config.users.defaultUserHome;
+			in
+				"${base}/${final.data.username}";
+		};
+
 		shell = lib.options.mkOption
 		{
 			type = lib.types.nullOr lib.types.package;
@@ -185,6 +195,19 @@ szy'.objects.declare
 		imports = szy.lib.imports.propagate.list { inherit types users; }
 		[
 			./users.nix
+		];
+
+		assertions =
+		[
+			{
+				assertion = 
+				lib.lists.all
+				(
+					user:
+						user.data.homeDirectory == config.users.users."${user.data.username}".home
+				) users;
+				message = "All user's homeDirectory value must match config.users.users.<name>.home. Currently at least one user doesn't fulfill this!";
+			}
 		];
 
 	};

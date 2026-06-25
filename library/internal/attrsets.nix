@@ -3,7 +3,9 @@ let
 
 	absoluteDefaultPriority = 100;
 
-	isOverride = value: ((value._type or "") == "override");
+	overrideType = "szy-override";
+
+	isOverride = value: ((value._type or "") == overrideType);
 
 	getPriority = value:
 	if (isOverride value)
@@ -61,7 +63,7 @@ let
 		result;
 
 in
-{
+rec {
 
 	attrsets =
 	let
@@ -115,14 +117,14 @@ in
 							l1val = getContent l1;
 							l2val = getContent l2;
 						in
-							lib.mkOverride (getPriority l1) (l1val ++ l2val);
+							attrsets.mkOverride (getPriority l1) (l1val ++ l2val);
 
 						mergeSets = s1: s2:
 						let
 							s1val = getContent s1;
 							s2val = getContent s2;
 						in
-							lib.mkOverride (getPriority s1) (deepMerge' s1val s2val);
+							attrsets.mkOverride (getPriority s1) (deepMerge' s1val s2val);
 					in
 					{
 						inherit name;
@@ -147,21 +149,19 @@ in
 	in
 	rec {
 
-		inherit (lib)
-			mkOverride
-			mkDefault
-			mkForce
-		;
+		mkOverride = priority: content:
+		{
+			_type = overrideType;
+			inherit priority content;
+		};
+
+		mkDefault = mkOverride 1000;
+		mkForce = mkOverride 50;
 
 		/*
 			Set priority to the actual default value of priorities
 		*/
 		mkAbsoluteDefault = mkOverride absoluteDefaultPriority;
-
-		/*
-			If you want a value to have a priority, use this to breakout that priority, otherwise it will be removed with a deepMerge.
-		*/
-		mkBreakoutPriority = mkAbsoluteDefault;
 
 		/*
 			deepMerge takes two sets and returns one set which is the result of merging the given sets. Right set takes precedence.

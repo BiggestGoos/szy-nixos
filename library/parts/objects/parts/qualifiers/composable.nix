@@ -40,7 +40,7 @@ let
 			(
 				name: value:
 				{
-					enable = lib.mkDefault value.enable; # TODO: Look into if this really can be lib.mkDefault'ed
+					enable = lib.mkDefault value.enable;
 					path = 
 					if (builtins.isPath value.path) 
 					then value.path 
@@ -72,7 +72,7 @@ let
 					let
 						enabled = final.data.enabled && final.data.components."${name}".enable;
 					in
-						szy.lib.imports.toggled.makeSingle enabled value.path
+						szy.lib.imports.toggled.single enabled value.path
 				) evaluatedComponents;
 
 			in

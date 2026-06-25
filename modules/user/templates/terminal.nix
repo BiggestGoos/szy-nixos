@@ -6,7 +6,7 @@
 
 	extends = [ "defaultApplication" ];
 
-	templateArguments =
+	metaArguments =
 	{ final }:
 	{
 

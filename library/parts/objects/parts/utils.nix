@@ -46,9 +46,6 @@ let
 			Data getters:
 
 			First we get metadata containing a namespace value that points to where the real data is.
-
-			All templates are currently (20260613) stored in "${szy}".templates.<template-name> but we still first 
-			get their namespace from the metadata and get the data that way to make it more easily changeable.
 		*/
 
 		template.get =
@@ -88,6 +85,35 @@ let
 		}:
 			getFromKeys { keys = global.namespace; object = config; };
 
+		# Does not include the template itself
+		template.getAllExtending =
+		{
+			config ? outside.config,
+			name ? lib.trivial.throwIf (identifier == null) "No name was supplied." identifier,
+			identifier ? null,
+		}:
+		let
+			templates = 
+			lib.attrsets.mapAttrsToList
+			(
+				name: value:
+					value
+			) (template.getAll { inherit config; });
+		in
+		builtins.map
+		(
+			template:
+				template.meta.identifier
+		)
+		(
+			builtins.filter
+			(
+				template:
+					(builtins.elem name (template.meta.full.extends))
+			) templates
+		);
+
+		# Does not include the tempalte itself.
 		template.getFullExtends =
 		{
 			config ? outside.config,
