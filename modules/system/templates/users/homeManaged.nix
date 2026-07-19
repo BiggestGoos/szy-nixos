@@ -10,9 +10,9 @@ szy'.objects.declare
 	parameters =
 	{
 
-		path = lib.options.mkOption
+		paths = lib.options.mkOption
 		{
-			type = lib.types.path;
+			type = lib.types.listOf lib.types.path;
 		};
 
 	};

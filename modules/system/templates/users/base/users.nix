@@ -17,7 +17,13 @@
 					builtins.map
 					(
 						user:
-							user.data.groups
+						let
+							primary = 
+							if (user.data.primaryGroup == null)
+							then []
+							else [ user.data.primaryGroup ];
+						in
+							primary ++ user.data.groups
 					) users
 				)
 			);

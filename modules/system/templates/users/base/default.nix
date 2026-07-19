@@ -184,11 +184,18 @@ szy'.objects.declare
 	{ final, ... }:
 	let
 		users =
-		builtins.map
+		builtins.filter
 		(
-			identifier:
-				szy'.objects.utils.definition.get { inherit identifier; }
-		) final.meta.full.definitions;
+			user:
+				user.data.enabled
+		)
+		(
+			builtins.map
+			(
+				identifier:
+					szy'.objects.utils.definition.get { inherit identifier; }
+			) final.meta.full.definitions
+		);
 	in
 	{
 
