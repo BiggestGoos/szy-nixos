@@ -10,9 +10,10 @@ szy'.objects.declare
 	parameters =
 	{
 
-		paths = lib.options.mkOption
+		# Imported by the users home-manager
+		modules = lib.options.mkOption
 		{
-			type = lib.types.listOf lib.types.path;
+			type = lib.types.listOf lib.types.anything;
 		};
 
 	};
