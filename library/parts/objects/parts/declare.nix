@@ -25,7 +25,7 @@ let
 		defaultArguments ? {},
 
 		/*
-			Templat data functions, can either be sets or functions to sets. They all take the argument:
+			Template data functions, can either be sets or functions to sets. They all take the argument:
 			- final: The final value (gotten from config) of the template
 		*/
 
