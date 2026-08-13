@@ -2,8 +2,8 @@
 
 	inputs =
 	{
-  		nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-		szy.url = "/home/goos/Dev/szy-nixos";
+		nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+		szy.url = "../";
 	};
 
 	outputs = 
@@ -19,24 +19,24 @@
 		{
 			specialArgs = 
 			{
-				szy = inputs.szy.library { host.name = "test"; };
-			};
-			modules = 
-			let
-				home-manager.test.import = 
-				{
-					x = [ "home manager" ];
+				szy = inputs.szy.library.addArguments 
+				{ 
+					configType = "system";
+					host =
+					{
+						name = "test";
+						system = "x86_64-linux";
+					};
 				};
-			in
-			[ 
-	  			./configuration.nix 
-				home-manager.test.import
-				{
-					nixpkgs.hostPlatform = "x86_64-linux";
-				}
-	  		];
-    	};
+			};
+			modules =
+			(inputs.szy.modules.system) ++
+			[
+				./configuration.nix
+			];
 
-  	};
+		};
+
+	};
 
 }
