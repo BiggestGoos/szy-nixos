@@ -30,9 +30,12 @@
 				};
 			};
 			modules =
-			(inputs.szy.modules.system) ++
+			#(inputs.szy.modules.system) ++
 			[
 				./configuration.nix
+				{
+					nixpkgs.hostPlatform = "x86_64-linux";
+				}
 			];
 
 		};

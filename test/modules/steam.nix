@@ -1,20 +1,16 @@
 { szy, config, lib, ... }:
-(szy config).objects.define
+(szy config).objects.make
 {
 
-	template = "application";
-	name = "steam";
+	name = "test";
 
-	arguments =
-	{
-		application.type = "gui";
-	};
+	template = true;
 
-	configuration =
+	output.config =
 	{
 
 		programs.steam.enable = true;
 
 	};
 
-}
+};

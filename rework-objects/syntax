@@ -1,9 +1,11 @@
-# Make template
+ Make template
 { szy, config, lib, ... }:
-(szy config).objects.template
+(szy config).objects.make
 {
 
 	name = "application";
+
+	template = true;
 
 	templates =
 	[
