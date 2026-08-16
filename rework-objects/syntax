@@ -1,3 +1,52 @@
 # Make template
-{ szy, config, ... }:
-(szy config)
+{ szy, config, lib, ... }:
+(szy config).objects.template
+{
+
+	name = "application";
+
+	templates =
+	[
+		"program"
+	];
+
+	constant' =
+	{ data, meta, constant, ... }:
+	{
+		
+		type = lib.options.mkOption
+		{
+			type = lib.types.str;
+		};
+		
+	};
+
+}
+
+# Make object
+{ szy, config, lib, ... }:
+(szy config).objects.make
+{
+
+	name = "steam";
+
+	templates =
+	[
+		"application"
+	];
+
+	constant =
+	{
+		type = "gui";
+
+		command = "steam";
+	};
+
+	data =
+	{
+
+		arguments = [ "-tenfootui" ];
+
+	};
+
+}
