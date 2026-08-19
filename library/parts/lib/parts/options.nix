@@ -19,6 +19,14 @@
 			extra 
 		];
 
+		types =
+		rec {
+
+			callable' = type: lib.types.either type (lib.types.functionTo type);
+			callable = callable' lib.types.attrs;
+
+		};
+
 	};
 
 }
