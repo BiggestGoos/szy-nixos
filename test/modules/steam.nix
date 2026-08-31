@@ -16,32 +16,6 @@
 			"-tenfootui"
 		];
 
-		desktopEntry.default.base =
-		{
-			path = lib.lists.last meta.identifier;
-			package = variable.program.package.input;
-		};
-
-	};
-
-	absolute =
-	{
-
-		variable' =
-		{
-
-			test = lib.options.mkOption
-			{
-				type = lib.types.str;
-			};
-
-		};
-
-		variable =
-		{
-			test = "${pkgs.hello}"; 
-		};
-
 	};
 
 	output.config =

@@ -299,6 +299,8 @@ let
 				)
 			);
 
+		# TODO: Try to change this from freestanding options to where variable and constant etc, are options with submodule type! Try to outsource things to the nixos module system.
+
 		output =
 		lib.attrsets.mapAttrs
 		(

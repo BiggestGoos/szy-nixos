@@ -11,7 +11,7 @@ let
 		let
 
 			desktopEntry = config;
-			inherit (desktopEntry) required base;
+			inherit (desktopEntry) base;
 
 			resolveOverrides = overrides:
 			lib.attrsets.filterAttrs 
@@ -67,10 +67,10 @@ let
 
 			result = 
 			if (notComplete)
-			then (lib.trivial.throwIf required "The required desktop entry for object \"${meta.prettyIdentifier}\" could not be created. It is missing either name or desktopName.") null
+			then null
 			else "${desktopEntryPackage}/share/applications/${values.name}.desktop";
 
-			strType = if (required) then lib.types.str else lib.types.nullOr lib.types.str;
+			strType = lib.types.nullOr lib.types.str;
 
 		in
 		{		
@@ -104,10 +104,9 @@ let
 			package = lib.options.mkOption
 			{
 				type = lib.types.nullOr lib.types.package;
-				default = null;
 			};
 
-			path = lib.options.mkOption
+			locator = lib.options.mkOption
 			{
 				type = lib.types.nullOr lib.types.str;
 			};
@@ -119,9 +118,9 @@ let
 				default = 
 				let
 
-					base = config.base.path;
-					packagePath = if config.base.package != null then "${config.base.package}" else "_"; # TODO: Add stuff for finding data from base of final
-					path = if (lib.strings.hasInfix "/" base) then base else "${packagePath}/share/applications/${base}.desktop";
+					base = config.base.locator;
+					packagePath = if config.base.package != null then "${config.base.package}" else "_";
+					path = if (lib.strings.hasPrefix "/" base) then base else "${packagePath}/share/applications/${base}.desktop";
 					pathExists = if (base == null) then false else builtins.pathExists path;
 
 					raw = builtins.readFile path;
@@ -436,22 +435,12 @@ let
 
 		};
 
-		required = lib.options.mkOption
-		{
-			type = lib.types.bool;
-			default = false;
-		};
-
 	}; };
 
 in
+lib.options.mkOption
 {
 
-	desktopEntry = lib.options.mkOption
-	{
-
-		type = lib.types.nullOr (lib.types.attrsOf (lib.types.submoduleWith { modules = [ desktopEntry ]; }));
-
-	};
+	type = lib.types.nullOr (lib.types.attrsOf (lib.types.submoduleWith { modules = [ desktopEntry ]; }));
 
 }

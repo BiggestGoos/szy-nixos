@@ -7,17 +7,7 @@
 
 	inherits = [ "application" ];	
 
-	variable =
-	{ variable, meta, ... }:
-	{
-
-		desktopEntry.default.base =
-		{
-			path = lib.lists.last meta.identifier;
-			package = variable.program.package.input;
-		};
-
-	};
+	schema.application = "application";
 
 	output.config =
 	{ variable, ... }:
@@ -28,5 +18,7 @@
 			package = variable.program.package.final;
 		};
 	};
+
+	variable.application.type = "mix";
 
 }
