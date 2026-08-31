@@ -5,59 +5,47 @@
 	name = "steam";
 	namespace = [ "applications" ];
 
-	templates =
+	inherits =
 	[
 		"application"
+		"program"
+		"program_1"
 	];
 
 	schema =
 	{
-		test = "application";
-
-		inherits =
-		[
-			"one"
-			"two"
-			"three"
-		];
-
-		test2 =
+		application =
 		{
-			test3 = "hello";
-			inherits =
-			[
-				"a"
-				"b"
-				"c"
-			];
-			a = { b = "c"; };
+			inherits = ["application"];
 		};
-
 	};
 
-	data' =
+	variable' =
+	{ variable, ... }:
 	{
 		bigPicture = lib.options.mkOption
 		{
 			type = lib.types.bool;
-			default = false;
+			default = variable.enable;
 		};
 	};
 
-	data =
-	{ data, ... }:
+	variable =
+	{ variable, ... }:
 	{
 
-		runArgs =
-		if data.bigPicture
+		/*application.runArgs = 
+		if variable.bigPicture
 		then [ "-tenfootui" ]
-		else [ ];
+		else [ ];*/
+
+		#application.bin = [ "steam" ];
 
 	};
 
 	constant =
 	{
-		type = "gui";
+		#application.type = "gui";
 	};
 
 	output.config =
@@ -66,5 +54,27 @@
 		programs.steam.enable = true;
 
 	};
+
+	output.options =
+	{ variable, ... }:
+	{
+		test = lib.options.mkOption
+		{
+			type = lib.types.anything;
+			default = variable;
+		};
+	};
+
+	output.imports =
+	{ variable, constant, ... }:
+	[
+		(
+			#{ enabled, ... }:
+			#enabled
+			{
+				programs.firefox.enable = constant.enabled;
+			}
+		)
+	];
 
 }

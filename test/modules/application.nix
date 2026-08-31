@@ -5,7 +5,9 @@
 	name = "application";
 	namespace = [ "template" ];
 
-	data' =
+	#propagates = [ "program" ];
+
+	variable' =
 	{
 
 		runArgs = lib.options.mkOption
@@ -13,6 +15,23 @@
 			type = lib.types.listOf lib.types.str;
 			default = [];
 		};
+
+		program =
+		{
+			test = lib.options.mkOption
+			{
+				type = lib.types.str;
+				default = "hello";
+			};
+		};
+
+	};
+
+	variable =
+	{ variable, ... }:
+	{
+
+		runArgs = lib.mkDefault variable.bin;
 
 	};
 

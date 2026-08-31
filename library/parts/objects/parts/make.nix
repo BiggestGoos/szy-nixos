@@ -14,8 +14,8 @@ let
 
 		data =
 		{
-			data' = [ {} ];
-			data = [ {} ];
+			variable' = [ {} ];
+			variable = [ {} ];
 
 			constant' = [ {} ];
 			constant = [ {} ];
@@ -29,97 +29,252 @@ let
 				isTemplate =
 				if !(builtins.isList namespace && namespace != [])
 				then false
-				else (builtins.head namespace) == "template";
+				else (lib.lists.take 1 namespace) == utils.template.prefix;
 			in
 			{
 				name = {};
 				namespace = [ [] ];
 				
+				isTemplate = [ isTemplate ];
+
 				/*
 					A list of either string or list of string. Just a string will be
 					interpreted as a list of one string.
 				*/
-				templates = [ [] ];
+				inherits = [ [] ];
+				propagates = [ [] ];
 
 				/*
 					This schema decides how this object includes templates.
 				*/
 				schema = [ {} ];
 
-				enable = [ (!isTemplate) ];
+				enable = [ isTemplate ];
 
 				private = data;
+				template = data;
 
 				output =
 				{
 					config = [ {} ];
 					options = [ {} ];
-					imports = [ {} ];
+					imports = [ [] ];
 				};
 
 			} // data
 		) inputs';
 
-		# TODO: The way this should work is that each object is only responsible for consolidating specifically the templates that it itself declares use of.
-		# Then this function should resolve this declaration by getting each declared templates schema and in-place inserting where that specific template
-		# is used in this schema.
-		/*resolveSchema = schema: templates:
-		let
-			
-			findTemplates = schema:
-			builtins.concatLists
-			(
-				lib.attrsets.mapAttrsToList
-				(
-					name: value:
-					if name == "inherits"
-					then
-					(
-						builtins.map
-						(
-							template:
-								lib.lists.toList template
-						) value
-					)
-					else
-					(
-						if !(builtins.isAttrs value)
-						then [ (lib.lists.toList value) ]
-						else findTemplates value
-					)
-				) schema
-			);
-
-			usedTemplates =  findTemplates schema;
-
-			# TODO: Test templates against usedTemplates. If usedTemplates contains more templates than templates then we know
-			# that something is wrong. Either there are multiple uses of one template or 
-
-		in
-		{
-			templates = findTemplates schema;
-		};*/
-
-		templates' =
+		propagates =
 		builtins.map
 		(
 			identifier:
-				lib.lists.toList identifier
-		) inputs.templates;
+				utils.template.resolveIdentifier identifier
+		) inputs.propagates;
 
-		templates = utils.template.getList { list = templates'; };
-
-		schema = resolveSchema inputs.schema templates;
+		inherits = 
+		builtins.concatLists
+		(
+			builtins.map
+			(
+				identifier':
+				let
+					identifier = utils.template.resolveIdentifier identifier';
+					template = utils.get { inherit identifier; };
+					propagates = utils.getList { list = (template.meta.propagates or []); };
+				in
+				[ template ] ++ propagates
+			) inputs.inherits
+		);
 
 		identifier = inputs.namespace ++ [ inputs.name ];
 
+		schema =
+		let
+		
+			usedInherits = 
+			let
+				currentUsed = schemaLevel:
+				builtins.concatLists
+				(
+					lib.attrsets.mapAttrsToList
+					(
+						name: value:
+						if name != "inherits"
+						then
+						(
+							if builtins.isAttrs value
+							then currentUsed value
+							else [ (utils.resolveIdentifier value) ]
+						)
+						else
+						(
+							builtins.map
+							(
+								value:
+									utils.resolveIdentifier value
+							) value
+						)
+					) schemaLevel
+				);
+			in
+			builtins.map
+			(
+				value:
+					utils.template.prefix ++ value
+			) (currentUsed inputs.schema);
+
+			notUsed = lib.lists.subtractLists usedInherits 
+			(
+				builtins.map
+				(
+					value:
+						value.meta.identifier
+				) inherits
+			);
+
+			resolveInherits = schema:
+			if builtins.isAttrs schema && schema ? "inherits"
+			then
+			(
+				szy.lib.attrsets.deepMergeList
+				(
+					[ (builtins.removeAttrs schema [ "inherits" ]) ]
+					++
+					(
+						builtins.map
+						(
+							identifier':
+							let
+								identifier = utils.template.resolveIdentifier identifier';
+								template = utils.get { inherit identifier; };
+							in
+								template.meta.schema
+						) schema.inherits
+					)
+				)
+			)
+			else schema;
+
+			# TODO: FIX HUGE BUG HERE! The logic for both:
+			# - resolving things like application = "application" => application = { inherits = [ "application" ]; }
+			# - going through each inherit and inserting its schema where appropriate. Somehow the result is that we get, with letting n be the number of inherits, n² amount of inherits in an inherits block.
+			resolveSchema = schema: inherits:
+			let
+				resolveSchemaSingle = schema: current:
+				resolveInherits
+				(
+					lib.attrsets.mapAttrs
+					(
+						name: value:
+						let
+							identifier = (builtins.tryEval (utils.template.resolveIdentifier value)).value;
+						in
+						if name == "inherits"
+						then value
+						else
+						(
+							if identifier == current.meta.identifier
+							then current.meta.schema
+							else resolveSchemaSingle value current
+						)
+					) schema
+				);
+			in
+			szy.lib.attrsets.deepMergeList
+			(
+				builtins.map
+				(
+					current:
+						resolveSchemaSingle schema current
+				) inherits
+			);
+
+			inputSchema =
+			szy.lib.attrsets.deepMerge
+			inputs.schema
+			{
+				inherits = notUsed;
+			};
+
+			resolvedSchema = resolveSchema inputs.schema inherits;
+
+		in
+		(
+			szy.lib.attrsets.deepMerge
+			resolvedSchema
+			{
+				inherits = [ identifier ];
+			}
+		);
+
+		namespace = szy.objects.utils.namespace ++ identifier;
+
+		final = utils.get { inherit identifier; };
+
+		dataArgument = path:
+		let
+			getFrom = object:
+			szy.lib.attrsets.getFromKeys
+			{
+				keys = path;
+				inherit object;
+			};
+		in
+		{
+			variable = getFrom final.variable;
+			constant = getFrom final.constant;
+			meta = final.meta;
+		};
+
+		getFromSchema = path: schema: keys:
+		szy.lib.attrsets.deepMergeList
+		([
+			(
+				lib.attrsets.filterAttrs
+				(n: v: v != {}) # Remove empty values
+				(lib.attrsets.mapAttrs
+				(
+					name: value:
+						getFromSchema (path ++ [ name ]) value keys
+				) (builtins.removeAttrs schema [ "inherits" ]))
+			)
+		]
+		++
+		(
+			builtins.map
+			(
+				identifier:
+				let
+					template = utils.get { inherit identifier; };
+				in
+					(szy.lib.attrsets.getFromKeys { inherit keys; object = template; }) (dataArgument path)
+			) (schema.inherits or [])
+		));
+
+		finalArgument = dataArgument [];
+
+		getDataPart = part:
+		let
+			prefix =
+			if !inputs.isTemplate
+			then [ "meta" "data" ]
+			else [ "meta" "template" ];
+		in
+			szy.lib.attrsets.deepMerge (getFromSchema [] schema (prefix ++ [ part ])) ((lib.trivial.toFunction inputs.private."${part}") finalArgument);
+
+		output =
+		lib.attrsets.mapAttrs
+		(
+			name: value:
+				lib.trivial.toFunction value
+		) inputs.output;
+
 	in
+	szy.lib.attrsets.deepMerge
 	{
 
 		options = 
 		let
-			namespace = szy.objects.utils.namespace ++ identifier;
-
 			inherit (szy.lib.options) constant;
 		in
 		lib.attrsets.setAttrByPath namespace
@@ -127,6 +282,36 @@ let
 			{
 
 				meta =
+				let
+
+					dataOptions = inputs:
+					{
+						variable' = constant
+						{
+							type = szy.lib.options.types.callable;
+							value = lib.trivial.toFunction inputs.variable';
+						};
+
+						variable = constant
+						{
+							type = szy.lib.options.types.callable;
+							value = lib.trivial.toFunction inputs.variable;
+						};
+
+						constant' = constant
+						{
+							type = szy.lib.options.types.callable;
+							value = lib.trivial.toFunction inputs.constant';
+						};
+						
+						constant = constant
+						{
+							type = szy.lib.options.types.callable;
+							value = lib.trivial.toFunction inputs.constant;
+						};
+					};
+
+				in
 				{
 
 					identifier = constant
@@ -135,16 +320,15 @@ let
 						value = identifier;
 					};
 
-					templates = constant
+					inherits = constant
 					{
-						type = lib.types.listOf (lib.types.listOf lib.types.str); # TODO: Add validation that these are real templates
-						value = templates';
-					};
-
-					data' = constant
-					{
-						type = szy.lib.options.types.callable;
-						value = lib.trivial.toFunction inputs.data';
+						type = lib.types.listOf (lib.types.listOf lib.types.str); # TODO: Add validation that these are real objects and that you are not inheriting something multiple times, directly or indirectly.
+						value = 
+						builtins.map
+						(
+							template:
+								template.meta.identifier
+						) inherits;
 					};
 
 					schema = constant
@@ -153,10 +337,96 @@ let
 						value = schema;
 					};
 
-				};
+					data = dataOptions inputs;
 
-			}
+				}
+				//
+				(
+					if !inputs.isTemplate
+					then {}
+					else
+					{
+						template = dataOptions inputs.template;
+						
+						propagates = constant
+						{
+							type = lib.types.listOf (lib.types.listOf lib.types.str);
+							value = propagates;
+						};
+					}
+				);
+
+			} //
+			(
+				let
+					prefix =
+					if !inputs.isTemplate
+					then [ "meta" "data" ]
+					else [ "meta" "template" ];
+				in
+				{
+
+					variable = (getDataPart "variable'") //
+					{
+						enable = lib.options.mkOption
+						{
+							type = lib.types.bool;
+							default = inputs.enable;
+						};
+					};
+					constant = getDataPart "constant'" //
+					{
+						enabled = constant
+						{
+							type = lib.types.bool;
+							value = final.variable.enable &&
+							(
+								builtins.all
+								(x: x == true)
+								(
+									builtins.map
+									(
+										template:
+											template.constant.enabled
+									) inherits
+								)
+							);
+						};
+					};
+	
+				}
+			)
 		);
+
+		config =
+		let
+			prefix =
+			if !inputs.isTemplate
+			then [ "meta" "data" ]
+			else [ "meta" "template" ];
+		in
+		lib.attrsets.setAttrByPath namespace
+		{
+
+			variable = getDataPart "variable";
+			constant = getDataPart "constant";
+
+		};
+
+	}
+	{
+
+		options = output.options finalArgument;
+		imports = 
+		(
+			szy.lib.imports.toggled.listWithArgs final.constant.enabled finalArgument (output.imports finalArgument)
+		)
+		++
+		[
+			(
+				lib.mkIf final.constant.enabled (output.config finalArgument)
+			)
+		];
 
 	};
 

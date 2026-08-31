@@ -8,32 +8,54 @@ let
 
 		namespace = [ "${szy}" "objects" ];
 
+		resolveIdentifier = identifier:
+		let
+			isString = builtins.isString identifier;
+			isListOfStrings = (builtins.isList identifier) &&
+			(
+				builtins.all (value: builtins.isString value) identifier
+			);
+		in
+		if !(isString || isListOfStrings)
+		then builtins.throw "The given identifier is not a real identifier!"
+		else lib.lists.toList identifier;
+
+		get =
+		{
+			config ? outside.config,
+			identifier
+		}:
+		szy.lib.attrsets.getFromKeys
+		{
+			keys = output.namespace ++ identifier;
+			object = config;
+		};		
+
+		getList =
+		{
+			config ? outside.config,
+			list
+		}:
+		builtins.map
+		(
+			identifier:
+				output.get { inherit config identifier; }
+		) list;
+
 		template =
 		{
+			
+			prefix = [ "template" ];
+			namespace = output.namespace ++ output.template.prefix;
 
-			namespace = output.namespace ++ [ "template" ];
+			resolveIdentifier = identifier':
+			let
+				identifier = output.resolveIdentifier identifier';
+			in
+			if (lib.lists.take 1 identifier) == output.template.prefix
+			then identifier
+			else output.template.prefix ++ identifier;
 
-			get =
-			{
-				config ? outside.config,
-				identifier
-			}:
-			szy.lib.attrsets.getFromKeys
-			{
-				keys = output.template.namespace ++ identifier;
-				object = config;
-			};
-
-			getList =
-			{
-				config ? outside.config,
-				list
-			}:
-			builtins.map
-			(
-				identifier:
-					output.template.get { inherit config identifier; }
-			) list;
 
 		};
 
