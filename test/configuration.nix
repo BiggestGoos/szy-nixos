@@ -5,13 +5,6 @@
 
 	imports = szy.lib.imports.recursive ./modules;
 
-	"${szy}".objects =
-	{
-		applications.steam.variable =
-		{
-			enable = true;
-			bigPicture = false;
-		};
-	};
+	"${szy}".objects.programs.steam.variable.enable = true;
 
 }

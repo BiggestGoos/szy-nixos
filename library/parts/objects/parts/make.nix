@@ -8,7 +8,7 @@ let
 
 		If namespace has a head value of "template" then the object is a template.
 	*/
-	make = 
+	make' = 
 	inputs':
 	let
 
@@ -104,24 +104,20 @@ let
 						(
 							if builtins.isAttrs value
 							then currentUsed value
-							else [ (utils.resolveIdentifier value) ]
+							else [ (utils.template.resolveIdentifier value) ]
 						)
 						else
 						(
 							builtins.map
 							(
-								value:
-									utils.resolveIdentifier value
+								identifier:
+									utils.template.resolveIdentifier identifier
 							) value
 						)
 					) schemaLevel
 				);
 			in
-			builtins.map
-			(
-				value:
-					utils.template.prefix ++ value
-			) (currentUsed inputs.schema);
+				currentUsed inputs.schema;
 
 			notUsed = lib.lists.subtractLists usedInherits 
 			(
@@ -138,55 +134,34 @@ let
 			(
 				szy.lib.attrsets.deepMergeList
 				(
-					[ (builtins.removeAttrs schema [ "inherits" ]) ]
-					++
+					builtins.map
 					(
-						builtins.map
-						(
-							identifier':
-							let
-								identifier = utils.template.resolveIdentifier identifier';
-								template = utils.get { inherit identifier; };
-							in
-								template.meta.schema
-						) schema.inherits
-					)
+						identifier':
+						let
+							identifier = utils.template.resolveIdentifier identifier';
+							template = utils.get { inherit identifier; };
+						in
+							template.meta.schema
+					) schema.inherits
 				)
 			)
 			else schema;
 
-			# TODO: FIX HUGE BUG HERE! The logic for both:
-			# - resolving things like application = "application" => application = { inherits = [ "application" ]; }
-			# - going through each inherit and inserting its schema where appropriate. Somehow the result is that we get, with letting n be the number of inherits, n² amount of inherits in an inherits block.
-			resolveSchema = schema: inherits:
-			let
-				resolveSchemaSingle = schema: current:
-				resolveInherits
-				(
-					lib.attrsets.mapAttrs
-					(
-						name: value:
-						let
-							identifier = (builtins.tryEval (utils.template.resolveIdentifier value)).value;
-						in
-						if name == "inherits"
-						then value
-						else
-						(
-							if identifier == current.meta.identifier
-							then current.meta.schema
-							else resolveSchemaSingle value current
-						)
-					) schema
-				);
-			in
-			szy.lib.attrsets.deepMergeList
+			resolveSchema = schema:
+			szy.lib.attrsets.deepMerge
+			(resolveInherits schema)
 			(
-				builtins.map
+				lib.attrsets.mapAttrs
 				(
-					current:
-						resolveSchemaSingle schema current
-				) inherits
+					name: value:
+					let
+						identifier = (builtins.tryEval (utils.template.resolveIdentifier value)).value;
+						template = utils.get { inherit identifier; };
+					in
+					if identifier != false
+					then template.meta.schema
+					else resolveSchema value
+				) (builtins.removeAttrs schema [ "inherits" ])
 			);
 
 			inputSchema =
@@ -196,7 +171,7 @@ let
 				inherits = notUsed;
 			};
 
-			resolvedSchema = resolveSchema inputs.schema inherits;
+			resolvedSchema = resolveSchema inputSchema;
 
 		in
 		(
@@ -320,6 +295,12 @@ let
 						value = identifier;
 					};
 
+					prettyName = constant
+					{
+						type = lib.types.str;
+						value = lib.strings.concatStringsSep "." identifier;
+					};
+
 					inherits = constant
 					{
 						type = lib.types.listOf (lib.types.listOf lib.types.str); # TODO: Add validation that these are real objects and that you are not inheriting something multiple times, directly or indirectly.
@@ -358,12 +339,6 @@ let
 
 			} //
 			(
-				let
-					prefix =
-					if !inputs.isTemplate
-					then [ "meta" "data" ]
-					else [ "meta" "template" ];
-				in
 				{
 
 					variable = (getDataPart "variable'") //
@@ -399,12 +374,6 @@ let
 		);
 
 		config =
-		let
-			prefix =
-			if !inputs.isTemplate
-			then [ "meta" "data" ]
-			else [ "meta" "template" ];
-		in
 		lib.attrsets.setAttrByPath namespace
 		{
 
@@ -427,6 +396,22 @@ let
 				lib.mkIf final.constant.enabled (output.config finalArgument)
 			)
 		];
+
+	};
+
+	make =
+	{
+
+		__functor = self: input: make' input;
+
+		template = input':
+		let
+			input = input' //
+			{
+				namespace = utils.template.prefix ++ (input'.namespace or []);
+			};
+		in
+			make' input;
 
 	};
 

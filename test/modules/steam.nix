@@ -1,80 +1,37 @@
-{ szy, config, lib, ... }:
+{ szy, config, lib, pkgs, ... }:
 (szy config).objects.make
 {
 
 	name = "steam";
-	namespace = [ "applications" ];
+	namespace = [ "programs" ];
 
-	inherits =
-	[
-		"application"
-		"program"
-		"program_1"
-	];
-
-	schema =
-	{
-		application =
-		{
-			inherits = ["application"];
-		};
-	};
-
-	variable' =
-	{ variable, ... }:
-	{
-		bigPicture = lib.options.mkOption
-		{
-			type = lib.types.bool;
-			default = variable.enable;
-		};
-	};
+	inherits = [ "application" ];	
 
 	variable =
-	{ variable, ... }:
+	{ variable, meta, ... }:
 	{
+		
+		actions.default.arguments =
+		[
+			"-tenfootui"
+		];
 
-		/*application.runArgs = 
-		if variable.bigPicture
-		then [ "-tenfootui" ]
-		else [ ];*/
+		desktopEntry.default.base =
+		{
+			path = lib.lists.last meta.identifier;
+			package = variable.package.input;
+		};
 
-		#application.bin = [ "steam" ];
-
-	};
-
-	constant =
-	{
-		#application.type = "gui";
 	};
 
 	output.config =
-	{
-
-		programs.steam.enable = true;
-
-	};
-
-	output.options =
 	{ variable, ... }:
 	{
-		test = lib.options.mkOption
+		programs.steam =
 		{
-			type = lib.types.anything;
-			default = variable;
+			enable = true;
+			package = variable.package.final;
 		};
 	};
-
-	output.imports =
-	{ variable, constant, ... }:
-	[
-		(
-			#{ enabled, ... }:
-			#enabled
-			{
-				programs.firefox.enable = constant.enabled;
-			}
-		)
-	];
 
 }

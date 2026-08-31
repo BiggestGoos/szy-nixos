@@ -30,7 +30,7 @@
 				};
 			};
 			modules =
-			#(inputs.szy.modules.system) ++
+			(inputs.szy.modules.system) ++
 			[
 				./configuration.nix
 				{
