@@ -10,4 +10,9 @@
 		"desktopEntry"
 	];
 
+	schema =
+	{
+		program = "program";
+	};
+
 }

@@ -16,7 +16,6 @@ in
 	schema =
 	{
 		package = "package";
-		commands = "commands";
 	};
 
 	variable' =
@@ -80,12 +79,18 @@ in
 		
 		actions.${defaultName} = {};
 
+	};
+
+	absolute.variable =
+	{ getFrom, ... }:
+	{
+
 		commands =
 		lib.attrsets.mapAttrs
 		(
 			name: value:
 			let
-				absolute = variable.bin."${value.bin}";
+				absolute = (getFrom "program").bin."${value.bin}";
 				relative = builtins.baseNameOf absolute;
 				inherit (value) arguments;
 			in
@@ -93,7 +98,7 @@ in
 				relative = lib.strings.concatStringsSep " " ([ relative ] ++ arguments);
 				absolute = lib.strings.concatStringsSep " " ([ absolute ] ++ arguments);
 			}
-		) variable.actions;
+		) (getFrom "program").actions;
 
 	};
 

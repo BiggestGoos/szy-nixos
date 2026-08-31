@@ -4,7 +4,7 @@
 
 	name = "commands";
 
-	variable' =
+	absolute.variable'.commands =
 	lib.options.mkOption
 	{
 

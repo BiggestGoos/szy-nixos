@@ -2,7 +2,7 @@
 (szy config).objects.make
 {
 
-	name = "steam";
+	name = "firefox";
 	namespace = [ "programs" ];
 
 	inherits = [ "application" ];	
@@ -10,11 +10,6 @@
 	variable =
 	{ variable, meta, ... }:
 	{
-		
-		program.actions.default.arguments =
-		[
-			"-tenfootui"
-		];
 
 		desktopEntry.default.base =
 		{
@@ -24,30 +19,10 @@
 
 	};
 
-	absolute =
-	{
-
-		variable' =
-		{
-
-			test = lib.options.mkOption
-			{
-				type = lib.types.str;
-			};
-
-		};
-
-		variable =
-		{
-			test = "${pkgs.hello}"; 
-		};
-
-	};
-
 	output.config =
 	{ variable, ... }:
 	{
-		programs.steam =
+		programs.firefox =
 		{
 			enable = true;
 			package = variable.program.package.final;

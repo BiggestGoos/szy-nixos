@@ -56,6 +56,41 @@ let
 			then identifier
 			else output.template.prefix ++ identifier;
 
+			absolute =
+			{
+
+				getPath = identifier: identifierInner':
+				let
+					identifierInner = output.template.resolveIdentifier identifierInner';
+					template = output.get { inherit identifier; };
+					path = 
+					(
+						lib.lists.findFirst
+						(
+							value:
+								value.identifier == identifierInner
+						)
+						[]
+						template.meta.allInherits
+					).path;
+				in
+					path;
+
+				getFrom = identifier: prefix: identifierInner:
+				szy.lib.attrsets.getFromKeys
+				{
+					keys = prefix ++ (output.template.absolute.getPath identifier identifierInner);
+					object = output.get { inherit identifier; };
+				};	
+
+				setAt = identifier: prefix: identifierInner: input:
+				szy.lib.attrsets.createFromKeys
+				{
+					keys = prefix ++ (output.template.absolute.getPath identifier identifierInner);
+					value = input;
+				};	
+
+			};
 
 		};
 

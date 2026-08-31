@@ -12,13 +12,18 @@ let
 	inputs':
 	let
 
-		data =
+		data' =
 		{
 			variable' = [ {} ];
 			variable = [ {} ];
 
 			constant' = [ {} ];
 			constant = [ {} ];
+		};
+
+		data = data' //
+		{
+			absolute = data';
 		};
 
 		inputs = szy.lib.functions.followSchema
@@ -51,7 +56,7 @@ let
 
 				enable = [ isTemplate ];
 
-				private = data;
+				private = data';
 				template = data;
 
 				output =
@@ -86,7 +91,7 @@ let
 			) inputs.inherits
 		);
 
-		identifier = inputs.namespace ++ [ inputs.name ];
+		global.identifier = inputs.namespace ++ [ inputs.name ];
 
 		schema =
 		let
@@ -178,13 +183,38 @@ let
 			szy.lib.attrsets.deepMerge
 			resolvedSchema
 			{
-				inherits = [ identifier ];
+				inherits = [ global.identifier ];
 			}
 		);
 
-		namespace = szy.objects.utils.namespace ++ identifier;
+		allInherits =
+		let
 
-		final = utils.get { inherit identifier; };
+			allInheritsIn = path: schemaLevel:
+			builtins.concatLists
+			(
+				lib.attrsets.mapAttrsToList
+				(
+					name: value:
+					if name == "inherits"
+					then 
+					builtins.map
+					(
+						identifier:
+						{
+							inherit identifier path;
+						}
+					) value
+					else allInheritsIn (path ++ [ name ]) value
+				) schemaLevel
+			);
+
+		in
+			allInheritsIn [] schema;
+
+		namespace = szy.objects.utils.namespace ++ global.identifier;
+
+		final = utils.get { inherit (global) identifier; };
 
 		dataArgument = path:
 		let
@@ -235,7 +265,39 @@ let
 			then [ "meta" "data" ]
 			else [ "meta" "template" ];
 		in
-			szy.lib.attrsets.deepMerge (getFromSchema [] schema (prefix ++ [ part ])) ((lib.trivial.toFunction inputs.private."${part}") finalArgument);
+			szy.lib.attrsets.deepMergeList 
+			(
+				[
+					(getFromSchema [] schema (prefix ++ [ part ])) 
+					((lib.trivial.toFunction inputs.private."${part}") finalArgument)
+				] ++
+				(
+					builtins.map
+					(
+						identifier:
+						let
+							template = utils.get { inherit identifier; };
+
+							argument = finalArgument //
+							{
+								getFrom = utils.template.absolute.getFrom global.identifier [ part ];
+								setAt = utils.template.absolute.setAt global.identifier [ part ];
+							};
+						in
+						(szy.lib.attrsets.getFromKeys
+						{
+							keys = prefix ++ [ "absolute" part ];
+							object = template;
+						}) argument
+					) 
+					(
+						builtins.map
+						(
+							value: value.identifier
+						) allInherits
+					)
+				)
+			);
 
 		output =
 		lib.attrsets.mapAttrs
@@ -284,6 +346,35 @@ let
 							type = szy.lib.options.types.callable;
 							value = lib.trivial.toFunction inputs.constant;
 						};
+
+						absolute = 
+						{
+
+							variable' = constant
+							{
+								type = szy.lib.options.types.callable;
+								value = lib.trivial.toFunction inputs.absolute.variable';
+							};
+
+							variable = constant
+							{
+								type = szy.lib.options.types.callable;
+								value = lib.trivial.toFunction inputs.absolute.variable;
+							};
+
+							constant' = constant
+							{
+								type = szy.lib.options.types.callable;
+								value = lib.trivial.toFunction inputs.absolute.constant';
+							};
+							
+							constant = constant
+							{
+								type = szy.lib.options.types.callable;
+								value = lib.trivial.toFunction inputs.absolute.constant;
+							};
+
+						};
 					};
 
 				in
@@ -292,13 +383,13 @@ let
 					identifier = constant
 					{
 						type = lib.types.listOf lib.types.str;
-						value = identifier;
+						value = global.identifier;
 					};
 
 					prettyName = constant
 					{
 						type = lib.types.str;
-						value = lib.strings.concatStringsSep "." identifier;
+						value = lib.strings.concatStringsSep "." global.identifier;
 					};
 
 					inherits = constant
@@ -310,6 +401,12 @@ let
 							template:
 								template.meta.identifier
 						) inherits;
+					};
+
+					allInherits = constant
+					{
+						type = lib.types.anything; #lib.types.listOf (lib.types.listOf lib.types.str);
+						value = allInherits;
 					};
 
 					schema = constant
@@ -349,6 +446,7 @@ let
 							default = inputs.enable;
 						};
 					};
+
 					constant = getDataPart "constant'" //
 					{
 						enabled = constant
