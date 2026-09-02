@@ -232,7 +232,7 @@ let
 		};
 
 		getFromSchema = path: schema: keys:
-		szy.lib.attrsets.deepMergeList
+		#szy.lib.attrsets.deepMergeList
 		([
 			(
 				lib.attrsets.filterAttrs
@@ -265,39 +265,52 @@ let
 			then [ "meta" "data" ]
 			else [ "meta" "template" ];
 		in
-			szy.lib.attrsets.deepMergeList 
+		builtins.map
+		(
+			{ identifier, path }:
+			szy.lib.attrsets.createFromKeys
+			{
+				keys = path;
+				value = 
+				szy.lib.attrsets.getFromKeys
+				{
+					keys = prefix ++ [ part ];
+					object = utils.get { inherit identifier; };
+				};
+			}
+		) allInherits;
+		/*(
+			(getFromSchema [] schema (prefix ++ [ part ])) ++
+			[
+				((lib.trivial.toFunction inputs.private."${part}") finalArgument)
+			] ++
 			(
-				[
-					(getFromSchema [] schema (prefix ++ [ part ])) 
-					((lib.trivial.toFunction inputs.private."${part}") finalArgument)
-				] ++
+				builtins.map
+				(
+					identifier:
+					let
+						template = utils.get { inherit identifier; };
+
+						argument = finalArgument //
+						{
+							getFrom = utils.template.absolute.getFrom global.identifier [ part ];
+							setAt = utils.template.absolute.setAt global.identifier [ part ];
+						};
+					in
+					(szy.lib.attrsets.getFromKeys
+					{
+						keys = prefix ++ [ "absolute" part ];
+						object = template;
+					}) argument
+				) 
 				(
 					builtins.map
 					(
-						identifier:
-						let
-							template = utils.get { inherit identifier; };
-
-							argument = finalArgument //
-							{
-								getFrom = utils.template.absolute.getFrom global.identifier [ part ];
-								setAt = utils.template.absolute.setAt global.identifier [ part ];
-							};
-						in
-						(szy.lib.attrsets.getFromKeys
-						{
-							keys = prefix ++ [ "absolute" part ];
-							object = template;
-						}) argument
-					) 
-					(
-						builtins.map
-						(
-							value: value.identifier
-						) allInherits
-					)
+						value: value.identifier
+					) allInherits
 				)
-			);
+			)
+		);*/
 
 		# TODO: Try to change this from freestanding options to where variable and constant etc, are options with submodule type! Try to outsource things to the nixos module system.
 
@@ -407,7 +420,7 @@ let
 
 					allInherits = constant
 					{
-						type = lib.types.anything; #lib.types.listOf (lib.types.listOf lib.types.str);
+						type = lib.types.anything;
 						value = allInherits;
 					};
 
@@ -438,9 +451,81 @@ let
 
 			} //
 			(
+				let
+					modules = type:
+					let
+						addPrefix = prefix: list:
+						builtins.map
+						(
+							value:
+							{
+								"${prefix}" = value;
+							}
+						) list;
+					in
+					(addPrefix "options" (getDataPart "${type}'")) ++
+					(addPrefix "config" (getDataPart type));
+				in
 				{
 
-					variable = (getDataPart "variable'") //
+					variable = lib.options.mkOption
+					{
+						type = lib.types.submoduleWith
+						{
+							modules =
+							let
+								extraModule.options =
+								{
+									enable = lib.options.mkOption
+									{
+										type = lib.types.bool;
+										default = inputs.enable;
+									};
+								};
+							in 
+							(modules "variable")
+							++
+							[
+								extraModule
+							];
+						};
+					};
+
+					constant = lib.options.mkOption
+					{
+						type = lib.types.submoduleWith
+						{
+							modules = 
+							let
+								extraModule.options =
+								{
+									enabled = constant
+									{
+										type = lib.types.bool;
+										value = final.variable.enable &&
+										(
+											builtins.all
+											(x: x == true)
+											(
+												builtins.map
+												(
+													template:
+														template.constant.enabled
+												) inherits
+											)
+										);
+									};
+								};
+							in
+							(modules "constant")
+							++
+							[
+								extraModule
+							];
+						};
+					};
+
+					/*variable = (getDataPart "variable'") //
 					{
 						enable = lib.options.mkOption
 						{
@@ -467,20 +552,20 @@ let
 								)
 							);
 						};
-					};
+					};*/
 	
 				}
 			)
 		);
 
-		config =
+		/*config =
 		lib.attrsets.setAttrByPath namespace
 		{
 
 			variable = getDataPart "variable";
 			constant = getDataPart "constant";
 
-		};
+		};*/
 
 	}
 	{

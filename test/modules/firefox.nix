@@ -5,9 +5,9 @@
 	name = "firefox";
 	namespace = [ "programs" ];
 
-	inherits = [ "application" ];	
+	#inherits = [ "application" ];	
 
-	schema.application = "application";
+	#schema.application = "application";
 
 	output.config =
 	{ variable, ... }:
@@ -19,6 +19,6 @@
 		};
 	};
 
-	variable.application.type = "mix";
+	#variable.application.type = "mix";
 
 }

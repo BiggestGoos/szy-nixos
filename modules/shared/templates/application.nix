@@ -27,7 +27,7 @@
 			locator = variable.program.package.input.meta.mainProgram or (lib.lists.last meta.identifier); # This will NOT find all desktop entries!
 		};
 
-		type = szy.lib.attrsets.mkForce "gui";
+		type = lib.mkForce "gui";
 
 	};
 

@@ -16,6 +16,8 @@
 			"-tenfootui"
 		];
 
+		type = "cli";
+
 	};
 
 	output.config =
