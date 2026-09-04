@@ -93,7 +93,7 @@ let
 			{
 				type = lib.types.attrs;
 				readOnly = true;
-				default = values;
+				default = if (notComplete) then {} else values;
 			};
 		
 		};

@@ -2,20 +2,20 @@
 (szy config).objects.make
 {
 
-	name = "firefox";
+	name = "chrome";
 	namespace = [ "programs" ];
 
 	inherits = [ [ "programs" "browser" ] ];	
 
-	constant.type = "cli";
+	constant.type = "gui";
 
 	output.config =
 	{ variable, constant, ... }:
 	{
-		programs.firefox =
+		programs.chromium =
 		{
 			enable = true;
-			package = constant.program.package.final;
+			#package = constant.program.package.final;
 		};
 	};
 

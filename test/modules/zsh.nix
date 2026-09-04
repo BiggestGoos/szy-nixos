@@ -2,20 +2,18 @@
 (szy config).objects.make
 {
 
-	name = "firefox";
+	name = "zsh";
 	namespace = [ "programs" ];
 
-	inherits = [ [ "programs" "browser" ] ];	
-
-	constant.type = "cli";
+	inherits = [ "program" ];	
 
 	output.config =
 	{ variable, constant, ... }:
 	{
-		programs.firefox =
+		programs.zsh =
 		{
 			enable = true;
-			package = constant.program.package.final;
+			package = constant.package.final;
 		};
 	};
 

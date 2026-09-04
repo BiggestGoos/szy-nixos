@@ -37,6 +37,8 @@ let
 				else (lib.lists.take 1 namespace) == utils.template.prefix;
 			in
 			{
+				identifier = [ (final.namespace ++ [ final.name ]) ];
+
 				name = {};
 				namespace = [ [] ];
 				
@@ -91,7 +93,7 @@ let
 			) inputs.inherits
 		);
 
-		global.identifier = inputs.namespace ++ [ inputs.name ];
+		global.identifier = inputs.identifier;
 
 		schema =
 		let
@@ -228,33 +230,12 @@ let
 		{
 			variable = getFrom final.variable;
 			constant = getFrom final.constant;
+			absolute =
+			{
+				inherit (final) variable constant;
+			};
 			meta = final.meta;
 		};
-
-		getFromSchema = path: schema: keys:
-		#szy.lib.attrsets.deepMergeList
-		([
-			(
-				lib.attrsets.filterAttrs
-				(n: v: v != {}) # Remove empty values
-				(lib.attrsets.mapAttrs
-				(
-					name: value:
-						getFromSchema (path ++ [ name ]) value keys
-				) (builtins.removeAttrs schema [ "inherits" ]))
-			)
-		]
-		++
-		(
-			builtins.map
-			(
-				identifier:
-				let
-					template = utils.get { inherit identifier; };
-				in
-					(szy.lib.attrsets.getFromKeys { inherit keys; object = template; }) (dataArgument path)
-			) (schema.inherits or [])
-		));
 
 		finalArgument = dataArgument [];
 
@@ -265,55 +246,59 @@ let
 			then [ "meta" "data" ]
 			else [ "meta" "template" ];
 		in
-		builtins.map
+		[
+			((lib.trivial.toFunction inputs.private."${part}") finalArgument)
+		] ++
+		(builtins.concatLists
 		(
-			{ identifier, path }:
-			szy.lib.attrsets.createFromKeys
-			{
-				keys = path;
-				value = 
-				szy.lib.attrsets.getFromKeys
-				{
-					keys = prefix ++ [ part ];
-					object = utils.get { inherit identifier; };
-				};
-			}
-		) allInherits;
-		/*(
-			(getFromSchema [] schema (prefix ++ [ part ])) ++
-			[
-				((lib.trivial.toFunction inputs.private."${part}") finalArgument)
-			] ++
+			builtins.map
 			(
-				builtins.map
-				(
-					identifier:
+				{ identifier, path }:
+				let
+					template = utils.get { inherit identifier; };
+					relativeData =
 					let
-						template = utils.get { inherit identifier; };
+						data =
+						(
+							szy.lib.attrsets.getFromKeys
+							{
+								keys = prefix ++ [ part ];
+								object = template;
+							}
+						) (dataArgument path);
+					in
+					if data != {}
+					then
+					szy.lib.attrsets.createFromKeys
+					{
+						keys = path;
+						value = data;
+					}
+					else {};
 
+					absoluteData =
+					let
 						argument = finalArgument //
 						{
-							getFrom = utils.template.absolute.getFrom global.identifier [ part ];
-							setAt = utils.template.absolute.setAt global.identifier [ part ];
+							getFrom = utils.template.absolute.getFrom global.identifier;
+							setAt = utils.template.absolute.setAt global.identifier;
 						};
 					in
-					(szy.lib.attrsets.getFromKeys
-					{
-						keys = prefix ++ [ "absolute" part ];
-						object = template;
-					}) argument
-				) 
-				(
-					builtins.map
 					(
-						value: value.identifier
-					) allInherits
-				)
-			)
-		);*/
-
-		# TODO: Try to change this from freestanding options to where variable and constant etc, are options with submodule type! Try to outsource things to the nixos module system.
-
+						szy.lib.attrsets.getFromKeys
+						{
+							keys = prefix ++ [ "absolute" part ];
+							object = template;
+						}
+					) argument;
+				in
+				[
+					relativeData
+					absoluteData
+				]
+			) allInherits
+		));
+	
 		output =
 		lib.attrsets.mapAttrs
 		(
@@ -446,6 +431,12 @@ let
 							type = lib.types.listOf (lib.types.listOf lib.types.str);
 							value = propagates;
 						};
+
+						allObjects = constant
+						{
+							type = lib.types.anything;
+							value = utils.template.getAllObjects { inherit (global) identifier; };
+						};
 					}
 				);
 
@@ -524,48 +515,10 @@ let
 							];
 						};
 					};
-
-					/*variable = (getDataPart "variable'") //
-					{
-						enable = lib.options.mkOption
-						{
-							type = lib.types.bool;
-							default = inputs.enable;
-						};
-					};
-
-					constant = getDataPart "constant'" //
-					{
-						enabled = constant
-						{
-							type = lib.types.bool;
-							value = final.variable.enable &&
-							(
-								builtins.all
-								(x: x == true)
-								(
-									builtins.map
-									(
-										template:
-											template.constant.enabled
-									) inherits
-								)
-							);
-						};
-					};*/
 	
 				}
 			)
 		);
-
-		/*config =
-		lib.attrsets.setAttrByPath namespace
-		{
-
-			variable = getDataPart "variable";
-			constant = getDataPart "constant";
-
-		};*/
 
 	}
 	{
@@ -580,6 +533,19 @@ let
 			(
 				lib.mkIf final.constant.enabled (output.config finalArgument)
 			)
+			(
+				let
+					type = 
+					if inputs.isTemplate
+					then "templates"
+					else "objects";
+				in
+				szy.lib.attrsets.createFromKeys
+				{
+					keys = utils.namespace;
+					value.meta."${type}" = [ global.identifier ];
+				}
+			)
 		];
 
 	};
@@ -592,9 +558,17 @@ let
 		template = input':
 		let
 			input = input' //
-			{
-				namespace = utils.template.prefix ++ (input'.namespace or []);
-			};
+			(
+				if input' ? identifier
+				then
+				{
+					identifier = utils.template.prefix ++ input'.identifier;
+				}
+				else
+				{
+					namespace = utils.template.prefix ++ (input'.namespace or []);
+				}
+			);
 		in
 			make' input;
 

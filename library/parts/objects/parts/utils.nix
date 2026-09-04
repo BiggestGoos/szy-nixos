@@ -31,6 +31,25 @@ let
 			object = config;
 		};		
 
+		testInherits =
+		{
+			config ? outside.config,
+			identifier,
+			template
+		}@input:
+		let
+			object = output.get { inherit identifier; };
+			template = output.template.resolveIdentifier input.template;
+		in
+		builtins.elem template
+		(
+			builtins.map
+			(
+				value:
+					value.identifier
+			) object.meta.allInherits
+		);
+
 		getList =
 		{
 			config ? outside.config,
@@ -56,6 +75,32 @@ let
 			then identifier
 			else output.template.prefix ++ identifier;
 
+			getAllObjects =
+			{
+				config ? outside.config,
+				identifier
+			}:
+			let
+				testIdentifier = identifier;
+				objects = szy.lib.attrsets.getFromKeys
+				{
+					keys = output.namespace ++ [ "meta" "objects" ];
+					object = config;
+				};
+			in
+			builtins.filter
+			(
+				identifier:
+				let
+					object = output.get { inherit identifier config; };
+				in
+				builtins.any
+				(
+					template:
+						template.identifier == testIdentifier
+				) object.meta.allInherits
+			) objects;
+
 			absolute =
 			{
 
@@ -79,14 +124,14 @@ let
 				getFrom = identifier: prefix: identifierInner:
 				szy.lib.attrsets.getFromKeys
 				{
-					keys = prefix ++ (output.template.absolute.getPath identifier identifierInner);
+					keys = (lib.lists.toList prefix) ++ (output.template.absolute.getPath identifier identifierInner);
 					object = output.get { inherit identifier; };
 				};	
 
-				setAt = identifier: prefix: identifierInner: input:
+				setAt = identifier: identifierInner: input:
 				szy.lib.attrsets.createFromKeys
 				{
-					keys = prefix ++ (output.template.absolute.getPath identifier identifierInner);
+					keys = output.template.absolute.getPath identifier identifierInner;
 					value = input;
 				};	
 

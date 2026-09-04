@@ -2,7 +2,7 @@
 {
 
 	content =
-	{
+	rec {
 
 		constant = 
 		{ type, value, extra ? {} }: 

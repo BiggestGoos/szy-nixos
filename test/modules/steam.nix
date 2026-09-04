@@ -2,31 +2,68 @@
 (szy config).objects.make
 {
 
-	name = "steam";
-	namespace = [ "programs" ];
+	identifier = [ "programs" "steam" ];
 
 	inherits = [ "application" ];	
+
+	private.variable' =
+	{
+		bigPicture = lib.options.mkOption
+		{
+			type = lib.types.bool;
+			default = false;
+		};
+	};
+
+	constant.type = "mix";
 
 	variable =
 	{ variable, meta, ... }:
 	{
 		
-		program.actions.default.arguments =
-		[
-			"-tenfootui"
-		];
+		bigPicture = true;
 
-		type = "cli";
+		program.actions =
+		{
+			default.arguments =
+			[
+				"-tenfootui"
+			];
+		};
+
+		program.package.overrides =
+		[
+			{
+				name = "override";
+				value = 
+				{
+					extraPkgs = pkgs': with pkgs'; 
+					[
+					    libXcursor
+    					libXi
+    					libXinerama
+    					libXScrnSaver
+    					libpng
+    					libpulseaudio
+    					libvorbis
+    					stdenv.cc.cc.lib # Provides libstdc++.so.6
+    					libkrb5
+    					keyutils
+    					# Add other libraries as needed
+  					];
+				};
+			}
+		];
 
 	};
 
 	output.config =
-	{ variable, ... }:
+	{ constant, ... }:
 	{
 		programs.steam =
 		{
 			enable = true;
-			package = variable.program.package.final;
+			package = constant.program.package.final;
 		};
 	};
 

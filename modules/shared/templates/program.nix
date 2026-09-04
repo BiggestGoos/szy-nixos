@@ -22,6 +22,9 @@ in
 	{ variable, ... }:
 	{
 
+		/*
+			A dictionary of bin-names to bin-paths
+		*/
 		bin = lib.options.mkOption
 		{
 			type =
@@ -36,6 +39,9 @@ in
 			default = {};
 		};
 
+		/*
+			A dictionary of "actions". An action consists of the name of a bin and a list of arguments
+		*/
 		actions = lib.options.mkOption
 		{
 			type =
@@ -65,32 +71,40 @@ in
 	};
 
 	variable =
-	{ variable, meta, ... }:
+	{ variable, constant, meta, ... }:
 	{
 		
+		# Tries to find the default bin path
 		bin.${defaultName} =
 		let
-			package = variable.package.final;
+			package = constant.package.final;
 			mainProgram = if package.meta ? "mainProgram" then lib.meta.getExe package else null;
 			naive = lib.meta.getExe' package (lib.lists.last meta.identifier);
 			program = if mainProgram != null then mainProgram else naive;
 		in
 		lib.mkIf (package != null && (builtins.pathExists program)) program;
 		
+		# All programs have a default action
 		actions.${defaultName} = {};
 
 	};
 
 	absolute.variable =
 	{ getFrom, ... }:
+	let
+		program = getFrom "variable" "program";
+	in
 	{
 
+		/*
+			This will create commands from all of the actions of the program
+		*/
 		commands =
 		lib.attrsets.mapAttrs
 		(
 			name: value:
 			let
-				absolute = (getFrom "program").bin."${value.bin}";
+				absolute = program.bin."${value.bin}";
 				relative = builtins.baseNameOf absolute;
 				inherit (value) arguments;
 			in
@@ -98,7 +112,7 @@ in
 				relative = lib.strings.concatStringsSep " " ([ relative ] ++ arguments);
 				absolute = lib.strings.concatStringsSep " " ([ absolute ] ++ arguments);
 			}
-		) (getFrom "program").actions;
+		) program.actions;
 
 	};
 
