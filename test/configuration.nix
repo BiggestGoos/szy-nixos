@@ -1,4 +1,4 @@
-{ lib, szy, ... }:
+{ lib, szy, pkgs, ... }:
 {
 
 	nixpkgs.config.allowUnfree = true;
@@ -16,6 +16,7 @@
 			};
 			firefox.variable.enable = true;
 			chrome.variable.enable = true;
+			zsh.variable.enable = true;
 		};
 
 		template.programs =
@@ -24,6 +25,12 @@
 			{
 				entry.any = "chrome";
 			};
+		};
+
+		users.goos.variable =
+		{
+			enable = true;
+			shell = pkgs.zsh;
 		};
 
 	};

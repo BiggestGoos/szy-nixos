@@ -5,7 +5,9 @@
 	name = "zsh";
 	namespace = [ "programs" ];
 
-	inherits = [ "program" ];	
+	inherits = [ [ "programs" "shell" ] ];	
+
+	constant.type = "cli";
 
 	output.config =
 	{ variable, constant, ... }:
