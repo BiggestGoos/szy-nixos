@@ -8,7 +8,7 @@
 
 		qualifierArgument:
 		{ # can simply be a function but also allows a functor with extra data:
-			inherits = [ ... (inhertis added by the qualifier) ]; # optional
+			extends = [ ... (extends added by the qualifier) ]; # optional
 			__functor = self: 
 			{
 				identifier, (The identifier of the qualifiers target)
@@ -22,12 +22,26 @@
 	*/
 
 	# You can add additional qualifiers via the objects.qualifiers argument for szy!
+	# They can either be in objects.qualifiers.* *.definition or *.template.
 	content = (arguments.objects or {}).qualifiers or {};
 
 	imports =
 	[
-		./composable.nix
-		./generateOptions.nix
+		{
+			name = "definition";
+			imports =
+			[
+				./composable.nix
+			];
+		}
+		{
+			name = "template";
+			imports =
+			[
+				./generateObjectOptions.nix
+				./generateTemplateOptions.nix
+			];
+		}
 	];
 	
 }

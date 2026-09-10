@@ -1,36 +1,64 @@
-{ lib, szy, ... }:
+{ lib, szy, pkgs, ... }:
 {
 
-	options =
-	{
+	nixpkgs.config.allowUnfree = true;
 
-		x = lib.options.mkOption
+	imports = szy.lib.imports.recursive ./modules;
+
+	"${szy}" =
+	{
+		objects =
 		{
-			type = lib.types.listOf lib.types.str;
+
+			programs =
+			{
+				steam =
+				{
+					#variable.enable = true;
+				};
+				firefox.variable =
+				{
+					#enable = true;
+				
+					components.wivrn.enable = true;
+				};
+				chrome.variable.enable = true;
+				#zsh.variable.enable = true;
+			};
+
+			/*template.programs =
+			{
+				browser.variable.default =
+				{
+					entry.any = "chrome";
+				};
+			};*/
+
+			users.goos.variable =
+			{
+				enable = true;
+				shell = pkgs.zsh;
+			};
+
 		};
 
-		"${szy}".x = lib.options.mkOption
+		catalog =
 		{
-			type = lib.types.int;
-			default = 5;
+	
+			programs =
+			{
+				zsh.enable = true;
+				firefox =
+				{
+					enable = true;
+					test = [ "hello" ];
+				};
+
+				default.browser = "chrome";
+			};
+
 		};
 
 	};
-
-	imports = szy.lib.imports.toggled.recursive
-	{
-		enabled = true;
-		withDefault = true;
-		directory = ./modules;
-	};
-
-	/*imports = 
-	[
-		./modules/test1.nix
-		./modules/foo/bar.nix
-		./modules/123
-		./modules/123/internal
-		./modules/123/otherFolder
-	];*/
 
 }

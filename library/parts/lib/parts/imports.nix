@@ -18,7 +18,7 @@
 				# Since the given might be a function/functor and might also be a path/string 
 				# to import, we try to import, and if it doesn't work we assume it is a function/functor
 				module = 
-				if (szy.lib.functions.isCallable module') 
+				if (szy.lib.functions.isCallable module' || builtins.isAttrs module') 
 				then module'
 				else import module';
 
@@ -47,7 +47,7 @@
 				};
 
 			in
-				module arg;
+				(lib.trivial.toFunction module) arg;
 
 			# To a list of modules, can be mixed
 			list = arg: imports: builtins.map (module: single arg module) imports;

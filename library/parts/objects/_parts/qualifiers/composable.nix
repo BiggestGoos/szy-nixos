@@ -13,9 +13,11 @@ let
 						{ 
 							<component-name> = 
 							{ 
-								path: Either a path or a string holding a path relative to componentPath. 
+								path ((builtins.isPath path) == true, then we use path directly, 
+								otherwise path must be convertible to string and componentPath set, if that is the case 
+								then the string value of path will be appended to componentPath),
 
-								enable: bool, defaults to false
+								enable (bool)
 							}; 
 						} 
 					*/
@@ -23,7 +25,7 @@ let
 	}:
 	{
 
-		inherits = [ "composable" ];
+		extends = [ "composable" ];
 
 		__functor = self:
 		{
@@ -33,14 +35,12 @@ let
 		}:
 		let
 
-			
-
 			evaluatedComponents = 
 			lib.attrsets.mapAttrs 
 			(
 				name: value:
 				{
-					enable = lib.mkDefault (value.enable or false);
+					enable = lib.mkDefault value.enable;
 					path = 
 					if (builtins.isPath value.path) 
 					then value.path 
@@ -55,9 +55,10 @@ let
 				}
 			) components;
 
-			namespace = utils.namespace ++ identifier;
+			namespace = utils.definition.namespace identifier;
 
-			final = utils.get { inherit config identifier; };
+			final = utils.definition.get { inherit config identifier; };
+
 		in
 		szy.lib.attrsets.deepMerge
 		data
@@ -65,13 +66,11 @@ let
 			imports =
 			let
 
-				toggledComponents = 
-				lib.attrsets.mapAttrsToList
+				toggledComponents = lib.attrsets.mapAttrsToList
 				(
 					name: value:
 					let
-						components = (utils.template.absolute.getFrom identifier "variable" "composable").components;
-						enabled = final.constant.enabled && components."${name}".enable;
+						enabled = final.data.enabled && final.data.components."${name}".enable;
 					in
 						szy.lib.imports.toggled.single enabled value.path
 				) evaluatedComponents;
@@ -79,15 +78,12 @@ let
 			in
 			[
 				(
-					szy.lib.attrsets.createFromKeys 
-					{ 
-						keys = namespace ++ [ "variable" ]; 
-						value =
-						utils.template.absolute.setAt identifier "composable"
-						{
-							components = evaluatedComponents;
-						}; 
-					}
+					szy.lib.attrsets.createFromKeys { keys = namespace; value =
+					{
+
+						data.components = evaluatedComponents;
+
+					}; }
 				)
 			] ++ toggledComponents;
 		};

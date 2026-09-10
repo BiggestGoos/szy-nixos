@@ -11,25 +11,22 @@
 		{
 
 			create = name: homeManaged: configuration:
-			szy.objects.define
+			szy.objects.make
 			(
-				szy.lib.attrsets.deepMerge
-				(
+				szy.lib.attrsets.deepMergeList
+				[
 					configuration
-				)
-				{
+					{
 
-					inherit (arguments) config;
-					template = "user";
+						identifier = [ "users" name ];
 
-					extends =
-					if (homeManaged)
-					then [ "homeManagedUser" ]
-					else [];
+						inherits = [ "user" ] ++
+						(
+							lib.lists.optional homeManaged [ "user" "homeManaged" ]
+						);
 
-					inherit name;
-
-				}
+					}
+				]
 			);
 
 		};

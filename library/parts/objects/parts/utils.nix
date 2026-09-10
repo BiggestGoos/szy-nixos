@@ -1,163 +1,155 @@
-{ lib, szy, arguments, ... }:
+{ szy, lib, arguments, ... }:
 let
 
-	outside.config = arguments.config or ((lib.trivial.warn "Either add config as argument to szy or supply your own config when calling utils functions!") null);
+	outside.config = arguments.config or (builtins.throw "Either add config as argument to szy or supply your own config when calling utils functions!");
 
-	inherit (szy.lib.attrsets) getFromKeys;
+	output =
+	{
 
-	global =
-	rec {
+		namespace = [ "${szy}" "objects" ];
 
-		namespace = [ szy.data.identifier "objects" ];
-
-		template.namespace = identifier: global.namespace ++ [ identifier ];
-
-		definition.namespace = 
-		{
-			name,
-			template,
-		}@identifier: (global.template.namespace identifier.template) ++ [ "definitions" identifier.name ];
-
-		/*
-			Metadata getters:
-
-			All templates and objects have metadata stored in "${szy}".objects.<template-name>.meta and *.<template-name>.definitions.<definition-name>.meta respectively.
-			One of the major points of interest in this metadata is the 'namespace' value which holds the keys pointing to where the actual data is.
-		*/
-
-		template.getMeta =
-		{
-			config ? outside.config,
-			name ? lib.trivial.throwIf (identifier == null) "No name was supplied." identifier,
-			identifier ? null,
-		}:
-			(getFromKeys { keys = global.template.namespace name; object = config; }).meta or {};
-		
-		definition.getMeta =
-		{
-			config ? outside.config,
-			name ? identifier.name,
-			template ? identifier.template,
-			identifier ? {},
-		}:
-			(getFromKeys { keys = global.definition.namespace { inherit name template; }; object = config; }).meta or {};
-
-		/*
-			Data getters:
-
-			First we get metadata containing a namespace value that points to where the real data is.
-		*/
-
-		template.get =
-		{
-			config ? outside.config,
-			name ? lib.trivial.throwIf (meta == {} && identifier == null) "No name was supplied." identifier,
-			identifier ? null,
-			meta ? {},
-		}@inputs:
+		resolveIdentifier = identifier:
 		let
-			# If we already have metadata we skip getting it again.
-			meta = inputs.meta or (template.getMeta { inherit config name; });
-		in
-			if (!(meta ? namespace)) then {} else (getFromKeys { keys = meta.namespace; object = config; });
-
-		definition.get =
-		{
-			config ? outside.config,
-			name ? identifier.name,
-			template ? identifier.template,
-			identifier ? {},
-			meta ? {},
-		}@inputs:
-		let
-			# If we already have metadata we skip getting it again.
-			meta = inputs.meta or (definition.getMeta { inherit config name template; });
-		in
-			if (!(meta ? namespace)) then {} else (getFromKeys { keys = meta.namespace; object = config; });
-
-		/*
-			Misc:
-		*/
-
-		template.getAll =
-		{
-			config ? outside.config,
-		}:
-			getFromKeys { keys = global.namespace; object = config; };
-
-		# Does not include the template itself
-		template.getAllExtending =
-		{
-			config ? outside.config,
-			name ? lib.trivial.throwIf (identifier == null) "No name was supplied." identifier,
-			identifier ? null,
-		}:
-		let
-			templates = 
-			lib.attrsets.mapAttrsToList
+			isString = builtins.isString identifier;
+			isListOfStrings = (builtins.isList identifier) &&
 			(
-				name: value:
-					value
-			) (template.getAll { inherit config; });
+				builtins.all (value: builtins.isString value) identifier
+			);
 		in
-		builtins.map
+		if !(isString || isListOfStrings)
+		then builtins.throw "The given identifier is not a real identifier!"
+		else lib.lists.toList identifier;
+
+		get =
+		{
+			config ? outside.config,
+			identifier
+		}:
+		szy.lib.attrsets.getFromKeys
+		{
+			keys = output.namespace ++ (output.resolveIdentifier identifier);
+			object = config;
+			default = builtins.throw "No object was found for identifier ${builtins.toJSON identifier}!";
+		};		
+
+		testInherits =
+		{
+			config ? outside.config,
+			object ? null,
+			identifier ? null,
+			template
+		}@input:
+		let
+			object =
+			if (input.object or null) == null
+			then output.get { inherit identifier; }
+			else input.object;
+			template = output.template.resolveIdentifier input.template;
+		in
+		builtins.elem template
 		(
-			template:
-				template.meta.identifier
-		)
-		(
-			builtins.filter
+			builtins.map
 			(
-				template:
-					(builtins.elem name (template.meta.full.extends))
-			) templates
+				value:
+					value.identifier
+			) object.meta.allInherits
 		);
 
-		# Does not include the tempalte itself.
-		template.getFullExtends =
+		getList =
 		{
 			config ? outside.config,
-			name ? lib.trivial.throwIf (identifier == null) "No name was supplied." identifier,
-			identifier ? null,
-		}@inputs:
+			list
+		}:
+		builtins.map
+		(
+			identifier:
+				output.get { inherit config identifier; }
+		) list;
+
+		template =
 		let
-
-			template = global.template.getMeta { inherit config name; };
-
-			getFullExtends = template: 
+			getAllOfType = type:
+			{
+				config ? outside.config,
+				identifier
+			}:
 			let
-
-				extends = template.extends;
-
-				iterate = 
-				(
-					(
-						extends
-					) ++ 
-					(
-						builtins.map 
-						(
-							name:
-							let
-								template = global.template.getMeta { inherit config name; };
-							in
-							(
-								if (template.extends != []) 
-								then (getFullExtends template) 
-								else []
-							)
-						) 
-						extends
-					)
-				);
-
+				testIdentifier = identifier;
+				objects = szy.lib.attrsets.getFromKeys
+				{
+					keys = output.namespace ++ [ "meta" type ];
+					object = config;
+				};
 			in
-				lib.lists.unique (lib.lists.flatten iterate);
+			builtins.filter
+			(
+				identifier:
+				let
+					object = output.get { inherit identifier config; };
+				in
+				builtins.any
+				(
+					template:
+						template.identifier == testIdentifier
+				) object.meta.allInherits
+			) objects;
 
 		in
-			getFullExtends template;
+		{
+			
+			prefix = [ "template" ];
+			namespace = output.namespace ++ output.template.prefix;
 
-	 };
+			resolveIdentifier = identifier':
+			let
+				identifier = output.resolveIdentifier identifier';
+			in
+			if (lib.lists.take 1 identifier) == output.template.prefix
+			then identifier
+			else output.template.prefix ++ identifier;
+
+			getAllObjects = getAllOfType "objects";
+			getAllTemplates = getAllOfType "templates";
+
+			absolute =
+			{
+
+				getPath = identifier: identifierInner':
+				let
+					identifierInner = output.template.resolveIdentifier identifierInner';
+					template = output.get { inherit identifier; };
+					path = 
+					(
+						lib.lists.findFirst
+						(
+							value:
+								value.identifier == identifierInner
+						)
+						[]
+						template.meta.allInherits
+					).path;
+				in
+					path;
+
+				getFrom = identifier: prefix: identifierInner:
+				szy.lib.attrsets.getFromKeys
+				{
+					keys = (lib.lists.toList prefix) ++ (output.template.absolute.getPath identifier identifierInner);
+					object = output.get { inherit identifier; };
+				};	
+
+				setAt = identifier: identifierInner: input:
+				szy.lib.attrsets.createFromKeys
+				{
+					keys = output.template.absolute.getPath identifier identifierInner;
+					value = input;
+				};	
+
+			};
+
+		};
+
+	};
 
 in
-	global
+	output

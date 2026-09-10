@@ -1,9 +1,10 @@
-{ szy, lib, config, pkgs, ... }:
-(szy config).objects.declare
+{ szy, config, lib, ... }:
+(szy config).objects.make.template
 {
-	
-	name = "shell";
 
-	extends = [ "shellBase" ];
+	name = "shell";
+	namespace = [ "programs" ];
+
+	inherits = [ [ "programs" "shell" "basic" ] ];
 
 }
