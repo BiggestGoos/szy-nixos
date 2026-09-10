@@ -476,14 +476,35 @@ let
 	{
 
 		options = output.options finalArgument;
-		imports = 
-		(
+		imports =
+		(	
 			szy.lib.imports.toggled.listWithArgs final.constant.enabled finalArgument (output.imports finalArgument)
 		)
 		++
 		[
 			(
-				lib.mkIf final.constant.enabled (output.config finalArgument)
+				let
+					argument =
+					if inputs.isTemplate
+					then finalArgument //
+					{
+						anyObjectEnabled =
+						let
+							anyEnabled =
+							builtins.any
+							(
+								identifier:
+								let
+									object = utils.get { inherit identifier; };
+								in
+									object.constant.enabled
+							) final.meta.allObjects;
+						in
+							szy.lib.toggled.make anyEnabled;
+					}
+					else finalArgument;
+				in
+					lib.mkIf final.constant.enabled (output.config argument)
 			)
 			(
 				let
