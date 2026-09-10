@@ -5,13 +5,18 @@
 	name = "package";
 
 	variable' =
-	{ variable, ... }:
+	{ variable, meta, ... }:
 	{
 		# The input package. Templates that want to modify the package should probably read from this.
 		input = lib.options.mkOption
 		{
 			type = lib.types.nullOr lib.types.package;
-			default = null;
+			# Attempts to find a package based on the object's name
+			default =
+			let
+				name = lib.lists.last meta.identifier;
+			in
+				pkgs.${name} or null;
 		};
 
 		/*
@@ -38,20 +43,6 @@
 			lib.types.listOf (lib.types.submoduleWith { modules = [ module ]; });
 			default = [];
 		};
-	};
-
-	variable =
-	{ meta, ... }:
-	let
-		name = lib.lists.last meta.identifier;
-	in
-	{
-		# Attempts to find a package based on the object's name
-		input =
-		let
-			package = pkgs.${name} or null;
-		in
-		lib.mkIf (package != null) (lib.mkDefault package);
 	};
 
 	constant' =

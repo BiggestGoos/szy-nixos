@@ -85,14 +85,12 @@ szy'.objects.make.template
 
 	};
 
-	template.absolute.constant' =
-	{ meta, getFrom, ... }:
+	template.constant' =
+	{ meta, variable, ... }:
 	let
 
-		self = getFrom "variable" "default";
-
-		inherit (self.default) entry types;
-		namespace = lib.lists.toList self.default.namespace;
+		inherit (variable.default) entry types;
+		namespace = lib.lists.toList variable.default.namespace;
 
 		objects = meta.allObjects;
 

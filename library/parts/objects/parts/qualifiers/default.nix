@@ -27,6 +27,7 @@
 	imports =
 	[
 		./composable.nix
+		./generateOptions.nix
 	];
 	
 }

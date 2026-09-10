@@ -13,11 +13,9 @@ let
 						{ 
 							<component-name> = 
 							{ 
-								path ((builtins.isPath path) == true, then we use path directly, 
-								otherwise path must be convertible to string and componentPath set, if that is the case 
-								then the string value of path will be appended to componentPath),
+								path: Either a path or a string holding a path relative to componentPath. 
 
-								enable (bool)
+								enable: bool, defaults to false
 							}; 
 						} 
 					*/
@@ -25,7 +23,7 @@ let
 	}:
 	{
 
-		extends = [ "composable" ];
+		inherits = [ "composable" ];
 
 		__functor = self:
 		{
@@ -35,12 +33,14 @@ let
 		}:
 		let
 
+			
+
 			evaluatedComponents = 
 			lib.attrsets.mapAttrs 
 			(
 				name: value:
 				{
-					enable = lib.mkDefault value.enable;
+					enable = lib.mkDefault (value.enable or false);
 					path = 
 					if (builtins.isPath value.path) 
 					then value.path 
@@ -55,10 +55,9 @@ let
 				}
 			) components;
 
-			namespace = utils.definition.namespace identifier;
+			namespace = utils.namespace ++ identifier;
 
-			final = utils.definition.get { inherit config identifier; };
-
+			final = utils.get { inherit config identifier; };
 		in
 		szy.lib.attrsets.deepMerge
 		data
@@ -66,11 +65,13 @@ let
 			imports =
 			let
 
-				toggledComponents = lib.attrsets.mapAttrsToList
+				toggledComponents = 
+				lib.attrsets.mapAttrsToList
 				(
 					name: value:
 					let
-						enabled = final.data.enabled && final.data.components."${name}".enable;
+						components = (utils.template.absolute.getFrom identifier "variable" "composable").components;
+						enabled = final.constant.enabled && components."${name}".enable;
 					in
 						szy.lib.imports.toggled.single enabled value.path
 				) evaluatedComponents;
@@ -78,12 +79,15 @@ let
 			in
 			[
 				(
-					szy.lib.attrsets.createFromKeys { keys = namespace; value =
-					{
-
-						data.components = evaluatedComponents;
-
-					}; }
+					szy.lib.attrsets.createFromKeys 
+					{ 
+						keys = namespace ++ [ "variable" ]; 
+						value =
+						utils.template.absolute.setAt identifier "composable"
+						{
+							components = evaluatedComponents;
+						}; 
+					}
 				)
 			] ++ toggledComponents;
 		};

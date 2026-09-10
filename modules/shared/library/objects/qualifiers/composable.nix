@@ -1,11 +1,10 @@
 { szy, lib, config, ... }:
-(szy config).objects.declare
+(szy config).objects.make.template
 {
 
 	name = "composable";
 
-	parameters =
-	{ final, template }:
+	variable' =
 	{
 
 		components = lib.options.mkOption

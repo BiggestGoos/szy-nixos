@@ -1,8 +1,9 @@
 { szy, config, lib, ... }:
 let
 	defaultName = "default";
+	szy' = szy config;
 in
-(szy config).objects.make.template
+szy'.objects.make.template
 {
 
 	name = "program";
@@ -115,5 +116,104 @@ in
 		) program.actions;
 
 	};
+
+	qualifiers =
+	[
+		{
+			name = "generateOptions";
+			arguments =
+			{
+				namespace = [ szy "catalog" "programs" ];
+
+				determine.objects = object: object.meta.allObjects;
+			};
+		}
+		{
+			name = "generateOptions";
+			arguments =
+			let
+				defaultPath = object: (szy'.objects.utils.template.absolute.getPath object.meta.identifier "default") ++ [ "default" ];
+			in
+			{
+				namespace = [ szy "catalog" "programs" "default" ];
+
+				determine.objects = object:
+				builtins.filter
+				(
+					identifier:
+					let
+						object = szy'.objects.utils.get { inherit identifier; };
+						hasDefault = szy.objects.utils.testInherits
+						{
+							inherit object;
+							template = "default";
+						};
+					in
+						hasDefault
+				) object.meta.allTemplates;
+
+				determine.options = object:
+				let
+					default = szy.lib.attrsets.getFromKeys
+					{
+						object = object.variable;
+						keys = defaultPath object;
+					};
+
+					types = builtins.attrNames default.types;
+
+					identifierType = lib.types.nullOr (lib.types.either (lib.types.str) (lib.types.listOf lib.types.str));
+				in
+				if types == []
+				then
+				{
+					type = identifierType;
+					default = null;
+				}
+				else
+				{
+					type = 
+					let
+
+						module = name:
+						{
+							options."${name}" = lib.options.mkOption
+							{
+								type = identifierType;
+								default = null;
+							};
+						};
+
+					in
+					lib.types.submoduleWith 
+					{ 
+						modules =
+						builtins.map
+						(
+							type: 
+								module type
+						) types;
+					};
+				};
+
+				determine.config = { object, data }:
+				szy.lib.attrsets.createFromKeys
+				{
+					keys = (defaultPath object) ++ [ "entry" ];
+					value = lib.mkIf (data != null)
+					(
+						if builtins.isAttrs data
+						then
+						lib.attrsets.filterAttrs
+						(
+							name: value:
+								value != null
+						) data
+						else data
+					);
+				};
+			};
+		}
+	];
 
 }

@@ -1,6 +1,7 @@
 { szy, lib, arguments, ... }:
 let
 
+	inherit (arguments) config;
 	inherit (szy.objects) utils;
 
 	/*
@@ -8,68 +9,9 @@ let
 
 		If namespace has a head value of "template" then the object is a template.
 	*/
-	make' = 
-	inputs':
+	makeBase = 
+	inputs:
 	let
-
-		data' =
-		{
-			variable' = [ {} ];
-			variable = [ {} ];
-
-			constant' = [ {} ];
-			constant = [ {} ];
-		};
-
-		data = data' //
-		{
-			absolute = data';
-		};
-
-		inputs = szy.lib.functions.followSchema
-		(
-			final:
-			let
-				inherit (final) namespace;
-				isTemplate =
-				if !(builtins.isList namespace && namespace != [])
-				then false
-				else (lib.lists.take 1 namespace) == utils.template.prefix;
-			in
-			{
-				identifier = [ (final.namespace ++ [ final.name ]) ];
-
-				name = {};
-				namespace = [ [] ];
-				
-				isTemplate = [ isTemplate ];
-
-				/*
-					A list of either string or list of string. Just a string will be
-					interpreted as a list of one string.
-				*/
-				inherits = [ [] ];
-				propagates = [ [] ];
-
-				/*
-					This schema decides how this object includes templates.
-				*/
-				schema = [ {} ];
-
-				enable = [ isTemplate ];
-
-				private = data';
-				template = data;
-
-				output =
-				{
-					config = [ {} ];
-					options = [ {} ];
-					imports = [ [] ];
-				};
-
-			} // data
-		) inputs';
 
 		propagates =
 		builtins.map
@@ -86,7 +28,11 @@ let
 				identifier':
 				let
 					identifier = utils.template.resolveIdentifier identifier';
-					template = utils.get { inherit identifier; };
+					templateTry = builtins.tryEval(utils.get { inherit identifier; });
+					template =
+					if templateTry.success
+					then templateTry.value
+					else builtins.throw "Failed to get inherited template ${builtins.toJSON identifier} for object ${builtins.toJSON global.identifier}";
 					propagates = utils.getList { list = (template.meta.propagates or []); };
 				in
 				[ template ] ++ propagates
@@ -228,7 +174,7 @@ let
 			};
 		in
 		{
-			variable = getFrom final.variable;
+			variable = /*builtins.trace "${builtins.toJSON global.identifier}, ::: ${builtins.toJSON path}"*/ (getFrom final.variable);
 			constant = getFrom final.constant;
 			absolute =
 			{
@@ -304,7 +250,7 @@ let
 		(
 			name: value:
 				lib.trivial.toFunction value
-		) inputs.output;
+		) ((lib.trivial.toFunction inputs.output) finalArgument);
 
 	in
 	szy.lib.attrsets.deepMerge
@@ -437,6 +383,12 @@ let
 							type = lib.types.anything;
 							value = utils.template.getAllObjects { inherit (global) identifier; };
 						};
+
+						allTemplates = constant
+						{
+							type = lib.types.anything;
+							value = utils.template.getAllTemplates { inherit (global) identifier; };
+						};
 					}
 				);
 
@@ -550,10 +502,130 @@ let
 
 	};
 
+	resolveInputs = inputs':
+	let
+
+		data' =
+		{
+			variable' = [ {} ];
+			variable = [ {} ];
+
+			constant' = [ {} ];
+			constant = [ {} ];
+		};
+
+		data = data' //
+		{
+			absolute = data';
+		};
+
+		inputs = szy.lib.functions.followSchema
+		(
+			final:
+			let
+				inherit (final) namespace;
+				isTemplate =
+				if !(builtins.isList namespace && namespace != [])
+				then false
+				else (lib.lists.take 1 namespace) == utils.template.prefix;
+			in
+			{
+				identifier = [ (final.namespace ++ [ final.name ]) ];
+
+				name = {};
+				namespace = [ [] ];
+				
+				isTemplate = [ isTemplate ];
+
+				/*
+					A list of either string or list of string. Just a string will be
+					interpreted as a list of one string.
+				*/
+				inherits = [ [] ];
+				propagates = [ [] ];
+
+				/*
+					This schema decides how this object includes templates.
+				*/
+				schema = [ {} ];
+
+				enable = [ isTemplate ];
+
+				private = data';
+				template = data;
+
+				output =
+				{
+					config = [ {} ];
+					options = [ {} ];
+					imports = [ [] ];
+				};
+
+				qualifiers = [ [] ];
+			} // data
+		) inputs';
+
+	in
+		inputs;
+
+	makeQuantifiers = inputs': 
+	let
+		qualifiers' = inputs'.qualifiers;
+		qualifiers =
+		builtins.map
+		(
+			{ name, arguments }:
+			let
+				qualifier = szy.objects.qualifiers."${name}";
+			in
+				qualifier arguments
+		) qualifiers';
+
+		qualifierInherits =
+		lib.lists.unique
+		(
+			builtins.concatLists
+			(
+				builtins.map
+				(
+					qualifier:
+					if builtins.isAttrs qualifier
+					then qualifier.inherits or []
+					else []
+				) qualifiers
+			)
+		);
+
+		inputs = inputs' //
+		{
+			inherits = inputs'.inherits ++ qualifierInherits;
+		};
+
+		base = makeBase inputs;
+
+		final =
+		lib.lists.foldl
+		(
+			data: qualifier:
+			qualifier
+			{
+				inherit data config;
+				inherit (inputs) identifier;
+			}
+		) base qualifiers;
+	in
+		final;
+
+	makeFinal = inputs': 
+	let
+		inputs = resolveInputs inputs';
+	in
+		makeQuantifiers inputs;
+
 	make =
 	{
 
-		__functor = self: input: make' input;
+		__functor = self: input: makeFinal input;
 
 		template = input':
 		let
@@ -570,7 +642,7 @@ let
 				}
 			);
 		in
-			make' input;
+			makeFinal input;
 
 	};
 

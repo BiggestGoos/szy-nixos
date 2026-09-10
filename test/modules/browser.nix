@@ -7,7 +7,11 @@
 
 	inherits = [ "application" "default" ];	
 
-	template.variable.default.namespace = "programs";
+	template.variable.default =
+	{
+		namespace = "programs";
+		types = lib.mkForce {};
+	};
 
 	output.config =
 	{ variable, ... }:

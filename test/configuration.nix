@@ -5,32 +5,58 @@
 
 	imports = szy.lib.imports.recursive ./modules;
 
-	"${szy}".objects =
+	"${szy}" =
 	{
-
-		programs =
+		objects =
 		{
-			steam =
+
+			programs =
 			{
-				variable.enable = true;
+				steam =
+				{
+					#variable.enable = true;
+				};
+				firefox.variable =
+				{
+					#enable = true;
+				
+					components.wivrn.enable = true;
+				};
+				chrome.variable.enable = true;
+				#zsh.variable.enable = true;
 			};
-			firefox.variable.enable = true;
-			chrome.variable.enable = true;
-			zsh.variable.enable = true;
+
+			/*template.programs =
+			{
+				browser.variable.default =
+				{
+					entry.any = "chrome";
+				};
+			};*/
+
+			users.goos.variable =
+			{
+				enable = true;
+				shell = pkgs.zsh;
+			};
+
 		};
 
-		template.programs =
+		catalog =
 		{
-			browser.variable.default =
+	
+			programs =
 			{
-				entry.any = "chrome";
-			};
-		};
+				zsh.enable = true;
+				firefox =
+				{
+					enable = true;
+					test = [ "hello" ];
+				};
 
-		users.goos.variable =
-		{
-			enable = true;
-			shell = pkgs.zsh;
+				default.browser = "chrome";
+			};
+
 		};
 
 	};

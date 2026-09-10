@@ -27,18 +27,23 @@ let
 		}:
 		szy.lib.attrsets.getFromKeys
 		{
-			keys = output.namespace ++ identifier;
+			keys = output.namespace ++ (output.resolveIdentifier identifier);
 			object = config;
+			default = builtins.throw "No object was found for identifier ${builtins.toJSON identifier}!";
 		};		
 
 		testInherits =
 		{
 			config ? outside.config,
-			identifier,
+			object ? null,
+			identifier ? null,
 			template
 		}@input:
 		let
-			object = output.get { inherit identifier; };
+			object =
+			if (input.object or null) == null
+			then output.get { inherit identifier; }
+			else input.object;
 			template = output.template.resolveIdentifier input.template;
 		in
 		builtins.elem template
@@ -62,20 +67,8 @@ let
 		) list;
 
 		template =
-		{
-			
-			prefix = [ "template" ];
-			namespace = output.namespace ++ output.template.prefix;
-
-			resolveIdentifier = identifier':
-			let
-				identifier = output.resolveIdentifier identifier';
-			in
-			if (lib.lists.take 1 identifier) == output.template.prefix
-			then identifier
-			else output.template.prefix ++ identifier;
-
-			getAllObjects =
+		let
+			getAllOfType = type:
 			{
 				config ? outside.config,
 				identifier
@@ -84,7 +77,7 @@ let
 				testIdentifier = identifier;
 				objects = szy.lib.attrsets.getFromKeys
 				{
-					keys = output.namespace ++ [ "meta" "objects" ];
+					keys = output.namespace ++ [ "meta" type ];
 					object = config;
 				};
 			in
@@ -100,6 +93,23 @@ let
 						template.identifier == testIdentifier
 				) object.meta.allInherits
 			) objects;
+
+		in
+		{
+			
+			prefix = [ "template" ];
+			namespace = output.namespace ++ output.template.prefix;
+
+			resolveIdentifier = identifier':
+			let
+				identifier = output.resolveIdentifier identifier';
+			in
+			if (lib.lists.take 1 identifier) == output.template.prefix
+			then identifier
+			else output.template.prefix ++ identifier;
+
+			getAllObjects = getAllOfType "objects";
+			getAllTemplates = getAllOfType "templates";
 
 			absolute =
 			{
